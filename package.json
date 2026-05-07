@@ -7,7 +7,9 @@
     "test": "node --test tests/*.test.js",
     "verify": "node scripts/setup-verify.js",
     "eval": "node scripts/stock-eval.js",
-    "screen": "node scripts/stock-screen.js"
+    "screen": "node scripts/stock-screen.js",
+    "lint:json": "for f in InvestSkill/plugins/us-stock-analysis/.claude-plugin/plugin.json InvestSkill/.claude-plugin/marketplace.json; do jq empty \"$f\" && echo \"✅ $f\"; done",
+    "pre-release": "npm test && node scripts/setup-verify.js && npm run lint:json && echo '\\n✅ Pre-release checks passed'"
   },
   "dependencies": {
     "yahoo-finance2": "^2.11.3",
