@@ -1,0 +1,61 @@
+---
+description: InvestSkill — US stock analysis plugin conventions
+globs:
+  - "plugins/**/*.md"
+  - "prompts/**/*.md"
+  - "plugins/**/*.json"
+alwaysApply: true
+---
+
+# InvestSkill Conventions
+
+## Skill structure
+
+Every skill lives at:
+```
+plugins/{plugin-name}/skills/my-analysis/SKILL.md
+```
+
+The SKILL.md must include YAML frontmatter with:
+- `name` — slug used as CLI trigger
+- `description` — one-line description shown in /help
+- `triggers` — list of slash command aliases
+- `args` — list of named arguments with required flag
+
+A copy without frontmatter lives at:
+```
+prompts/my-analysis.md
+```
+This is the universal prompt used by Gemini, Copilot, and other non-Claude tools.
+
+## Plugin registration
+
+Every skill must be registered in:
+```
+plugins/{plugin-name}/.claude-plugin/plugin.json
+```
+
+## Adding a new skill checklist
+
+1. [ ] Create `plugins/{plugin-name}/skills/my-analysis/SKILL.md`
+2. [ ] Create `prompts/my-analysis.md` (SKILL.md minus frontmatter)
+3. [ ] Register in `plugins/{plugin-name}/.claude-plugin/plugin.json`
+4. [ ] Update `.cursor/rules/invest-skill.mdc` with new skill reference
+5. [ ] Update `.github/copilot-instructions.md`
+6. [ ] Update `GEMINI.md`
+7. [ ] Update `README.md` features list
+8. [ ] Update any `README-*.md` platform-specific guides
+9. [ ] Add entry to `CHANGELOG.md`
+
+## Available skills
+
+| Skill | Trigger | Description |
+|-------|---------|-------------|
+| stock-eval | `/stock-eval` | Full institutional analysis for a US stock ticker |
+
+## Code conventions
+
+- All analysis scripts live in `/Users/kcw/Documents/US_Stocks/scripts/`
+- Scripts use ES modules (`"type": "module"` in package.json)
+- Yahoo Finance data fetched via native `fetch()` — no library dependency
+- Session crumb cached in module scope for the process lifetime

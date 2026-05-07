@@ -1,0 +1,17 @@
+{
+  "name": "us-stock-analysis",
+  "version": "1.0.0",
+  "description": "US stock fundamental & technical analysis toolkit",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "verify": "node scripts/setup-verify.js",
+    "eval": "node scripts/stock-eval.js",
+    "screen": "node scripts/stock-screen.js"
+  },
+  "dependencies": {
+    "yahoo-finance2": "^2.11.3",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5"
+  }
+}

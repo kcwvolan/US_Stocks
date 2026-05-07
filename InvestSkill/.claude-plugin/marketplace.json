@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "repository": "yennanliu/InvestSkill",
+  "displayName": "InvestSkill",
+  "description": "Institutional-grade US stock analysis skills for Claude Code — fundamentals, technicals, valuation, moat, and risk matrix.",
+  "category": "finance",
+  "tags": ["stocks", "investing", "finance", "analysis", "yahoo-finance"],
+  "license": "MIT",
+  "plugins": [
+    {
+      "id": "us-stock-analysis",
+      "path": "plugins/us-stock-analysis",
+      "displayName": "US Stock Analysis",
+      "description": "Full institutional research report for any US stock ticker.",
+      "version": "1.0.0",
+      "skills": ["my-analysis"]
+    }
+  ]
+}
