@@ -65,11 +65,15 @@ function rsi(closes, period = 14) {
 }
 
 function num(val, dec = 2) {
-  return val != null ? val.toFixed(dec) : 'N/A';
+  if (val == null) return 'N/A';
+  const n = Number(val);
+  return isNaN(n) ? 'N/A' : n.toFixed(dec);
 }
 
 function pct(val) {
-  return val != null ? (val * 100).toFixed(2) + '%' : 'N/A';
+  if (val == null) return 'N/A';
+  const n = Number(val);
+  return isNaN(n) ? 'N/A' : (n * 100).toFixed(2) + '%';
 }
 
 function formatLarge(n) {
