@@ -1,5 +1,8 @@
 {
   "schemaVersion": "1.0",
+  "metadata": {
+    "version": "1.0.0"
+  },
   "repository": "yennanliu/InvestSkill",
   "displayName": "InvestSkill",
   "description": "Institutional-grade US stock analysis skills for Claude Code — fundamentals, technicals, valuation, moat, and risk matrix.",
