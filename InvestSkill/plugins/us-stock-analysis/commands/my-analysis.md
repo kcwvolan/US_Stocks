@@ -36,10 +36,54 @@ RSI gauge. Trend signal (bullish / bearish / neutral alignment).
 **B. Balance Sheet** — liquidity, leverage, capital efficiency
 **C. Piotroski F-Score** — all 9 criteria with ✅/➖ and total score
 
-### IV. Valuation — Three Methods
-- Comparable company multiples (P/E, Fwd P/E, PEG vs peers)
-- DCF: bear / base / bull case with key assumptions stated
-- ROIC vs WACC spread
+### IV. Valuation
+
+Produce all six components below in order:
+
+**1. Valuation Summary** — Fair value range
+```
+Fair Value Range:  $X – $Y
+Current Price:     $Z
+Margin of Safety:  ±N%
+```
+
+**2. Methodology** — State which methods were used and why:
+- DCF (primary): assumptions — FCF base, growth rates, WACC, terminal rate
+- Comparable multiples (secondary): P/E, EV/EBITDA vs sector peers
+- ROIC/WACC spread (sanity check): confirms value creation direction
+
+**3. Scenarios** — Bull / Base / Bear with distinct assumptions:
+
+| Scenario | Revenue CAGR | Op Margin | WACC | Terminal g | Implied Value |
+|----------|-------------|-----------|------|------------|---------------|
+| Bull     | ...%        | ...%      | ...% | ...%       | $...          |
+| Base     | ...%        | ...%      | ...% | ...%       | $...          |
+| Bear     | ...%        | ...%      | ...% | ...%       | $...          |
+
+**4. Sensitivity Analysis** — How the base-case value moves with key inputs:
+
+| | WACC –1% | WACC Base | WACC +1% |
+|---|---|---|---|
+| Growth +2% | $... | $... | $... |
+| Growth Base | $... | $... | $... |
+| Growth –2% | $... | $... | $... |
+
+**5. Margin of Safety**
+```
+Fair Value (base):   $...
+Current Price:       $...
+Discount / Premium:  ...%   [SAFE / FAIR / EXPENSIVE]
+```
+Flag: ≥30% discount = strong MoS | 10–30% = moderate | <10% = limited | negative = overvalued
+
+**6. Investment Signal Block**
+```
+RATING:   [STRONG BUY / BUY / HOLD / SELL / STRONG SELL]
+ENTRY:    $...
+TARGET:   $... (+N% to fair value midpoint)
+STOP:     $... (thesis broken if breached)
+HORIZON:  ... months
+```
 
 ### V. Competitive Moat
 Rate each dimension ★1–5. State NARROW / WIDE / NONE overall.

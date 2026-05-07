@@ -32,10 +32,14 @@ Liquidity, leverage, capital efficiency
 ### C. Piotroski F-Score
 9-row table with ✅/➖ and total score
 
-## IV. Valuation — Three Methods
-### Method 1: Comparable Company Multiples
-### Method 2: DCF
-### Method 3: ROIC vs WACC
+## IV. Valuation
+
+1. **Valuation Summary** — Fair value range ($X – $Y)
+2. **Methodology** — DCF (primary) + comps (secondary) + ROIC/WACC (sanity check)
+3. **Scenarios** — Bull / Base / Bear table (revenue CAGR / margin / WACC / terminal g / implied value)
+4. **Sensitivity Analysis** — 3×3 grid: WACC ±1% × Revenue growth ±2%
+5. **Margin of Safety** — Discount/premium to fair value; SAFE / FAIR / EXPENSIVE flag
+6. **Investment Signal Block** — RATING / ENTRY / TARGET / STOP / HORIZON
 
 ## V. Competitive Moat Analysis
 ★ rating per dimension

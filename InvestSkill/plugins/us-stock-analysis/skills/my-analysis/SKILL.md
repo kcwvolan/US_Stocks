@@ -50,23 +50,38 @@ Then augments the script output with the full institutional narrative using Clau
 - Historical valuation ranges
 - Macro risk factors specific to the company
 
-## Output structure
+## Output Format
 
-```
-# {NAME} ({SYMBOL}) — Institutional Research Report
+### I. Executive Summary
+Price, market cap, analyst consensus target, today's % change, drawdown from 52w high.
 
-## I. Executive Summary
-## II. Technical Analysis (ASCII chart)
-## III. Fundamental Analysis
-   A. Income Statement Quality
-   B. Balance Sheet
-   C. Piotroski F-Score
-## IV. Valuation (3 methods)
-## V. Competitive Moat Analysis
-## VI. Risk Matrix
-## VII. 10-K Key Signals (if --deep)
-## VIII. Investment Decision
-```
+### II. Technical Analysis
+ASCII price chart (52 weeks), SMA 20/50/200, RSI gauge, trend signal.
+
+### III. Fundamental Analysis
+A. Income Statement Quality — margin table vs sector benchmarks
+B. Balance Sheet — liquidity, leverage, capital efficiency
+C. Piotroski F-Score — all 9 criteria, total score
+
+### IV. Valuation Summary
+
+1. **Valuation Summary** — Fair value range ($X – $Y)
+2. **Methodology** — DCF (primary) + comps (secondary) + ROIC/WACC (sanity check)
+3. **Scenarios** — Bull / Base / Bear with distinct revenue CAGR, margin, WACC, terminal growth
+4. **Sensitivity Analysis** — 3×3 grid: WACC (±1%) × Revenue Growth (±2%)
+5. **Margin of Safety** — Discount/premium to fair value; flag SAFE / FAIR / EXPENSIVE
+6. **Investment Signal Block** — RATING / ENTRY / TARGET / STOP / HORIZON
+
+### V. Competitive Moat
+★1–5 per dimension. NARROW / WIDE / NONE overall.
+
+### VI. Risk Matrix
+Probability × Impact grid. Mitigant for each high-impact risk.
+
+### VII. 10-K Key Signals *(--deep only)*
+
+### VIII. Investment Decision
+One-paragraph plain-English bottom line.
 
 ## Peer comparison benchmarks
 
