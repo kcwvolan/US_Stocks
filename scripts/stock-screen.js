@@ -2,6 +2,10 @@ import { getQuote, getSummary } from '../src/fetch.js';
 import chalk from 'chalk';
 import Table from 'cli-table3';
 
+const raw = v => (v != null && typeof v === 'object' && 'raw' in v ? v.raw : v);
+const pct = v => { const n = raw(v); return n != null ? (n * 100).toFixed(1) + '%' : 'N/A'; };
+const num = (v, d = 1) => { const n = raw(v); return n != null ? n.toFixed(d) : 'N/A'; };
+
 const WATCHLIST = (process.argv.slice(2).length ? process.argv.slice(2) : [
   'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'BRK-B', 'JPM', 'V',
 ]).map(s => s.toUpperCase());
@@ -17,9 +21,9 @@ const results = await Promise.allSettled(
       sym,
       price: quote.regularMarketPrice?.toFixed(2),
       change: quote.regularMarketChangePercent?.toFixed(2),
-      pe: sd.trailingPE?.toFixed(1) ?? 'N/A',
-      roe: fd.returnOnEquity != null ? (fd.returnOnEquity * 100).toFixed(1) + '%' : 'N/A',
-      margin: fd.grossMargins != null ? (fd.grossMargins * 100).toFixed(1) + '%' : 'N/A',
+      pe: num(sd.trailingPE),
+      roe: pct(fd.returnOnEquity),
+      margin: pct(fd.grossMargins),
       rec: fd.recommendationKey ?? 'N/A',
     };
   })
