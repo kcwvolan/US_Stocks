@@ -1,3 +1,5 @@
+import { rsiArr } from './technicals.js';
+
 function raw(val) {
   if (val == null) return null;
   return typeof val === 'object' && 'raw' in val ? val.raw : val;
@@ -55,13 +57,7 @@ function sma(arr, n) {
 }
 
 function rsi(closes, period = 14) {
-  if (closes.length < period + 1) return null;
-  const changes = closes.slice(1).map((v, i) => v - closes[i]);
-  const recent = changes.slice(-period);
-  const gains = recent.filter(c => c > 0).reduce((a, b) => a + b, 0) / period;
-  const losses = recent.filter(c => c < 0).map(Math.abs).reduce((a, b) => a + b, 0) / period;
-  if (losses === 0) return 100;
-  return 100 - 100 / (1 + gains / losses);
+  return rsiArr(closes, period).at(-1) ?? null;
 }
 
 function num(val, dec = 2) {

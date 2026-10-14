@@ -1,6 +1,6 @@
 // Pure TA computation — no rendering, no side effects
 
-function smaArr(arr, period) {
+export function smaArr(arr, period) {
   const res = new Array(arr.length).fill(null);
   let sum = 0;
   for (let i = 0; i < arr.length; i++) {
@@ -11,7 +11,7 @@ function smaArr(arr, period) {
   return res;
 }
 
-function emaArr(arr, period) {
+export function emaArr(arr, period) {
   const k = 2 / (period + 1);
   const res = new Array(arr.length).fill(null);
   const start = arr.findIndex(v => v != null);
@@ -25,18 +25,29 @@ function emaArr(arr, period) {
   return res;
 }
 
-function rsiArr(closes, period = 14) {
+// Wilder smoothing (TradingView / TA-Lib convention). A flat series returns 50 so it is not read as oversold.
+export function rsiArr(closes, period = 14) {
   const res = new Array(closes.length).fill(null);
-  for (let i = period; i < closes.length; i++) {
-    const changes = closes.slice(i - period, i + 1).map((v, j, a) => j ? v - a[j - 1] : 0).slice(1);
-    const gains = changes.filter(c => c > 0).reduce((a, b) => a + b, 0) / period;
-    const losses = changes.filter(c => c < 0).map(Math.abs).reduce((a, b) => a + b, 0) / period;
-    res[i] = losses === 0 ? 100 : 100 - 100 / (1 + gains / losses);
+  if (closes.length <= period) return res;
+  let gain = 0, loss = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d > 0) gain += d; else loss -= d;
+  }
+  gain /= period;
+  loss /= period;
+  const toRsi = () => (gain === 0 && loss === 0 ? 50 : loss === 0 ? 100 : 100 - 100 / (1 + gain / loss));
+  res[period] = toRsi();
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    gain = (gain * (period - 1) + (d > 0 ? d : 0)) / period;
+    loss = (loss * (period - 1) + (d < 0 ? -d : 0)) / period;
+    res[i] = toRsi();
   }
   return res;
 }
 
-function bollingerBands(closes, period = 20) {
+export function bollingerBands(closes, period = 20) {
   if (closes.length < period) return null;
   const slice = closes.slice(-period);
   const mean = slice.reduce((a, b) => a + b, 0) / period;
@@ -44,7 +55,7 @@ function bollingerBands(closes, period = 20) {
   return { upper: mean + 2 * Math.sqrt(variance), middle: mean, lower: mean - 2 * Math.sqrt(variance) };
 }
 
-function calcATR(history, period = 14) {
+export function calcATR(history, period = 14) {
   const trs = [];
   for (let i = 1; i < history.length; i++) {
     const { high, low } = history[i];
@@ -56,7 +67,7 @@ function calcATR(history, period = 14) {
   return trs.slice(-period).reduce((a, b) => a + b, 0) / period;
 }
 
-function calcStoch(history, kPeriod = 14, dPeriod = 3) {
+export function calcStoch(history, kPeriod = 14, dPeriod = 3) {
   if (history.length < kPeriod) return null;
   const ks = [];
   for (let i = kPeriod - 1; i < history.length; i++) {
@@ -71,7 +82,7 @@ function calcStoch(history, kPeriod = 14, dPeriod = 3) {
   return { k, d };
 }
 
-function calcPivots(history) {
+export function calcPivots(history) {
   if (history.length < 2) return null;
   const p = history.at(-2);
   const hi = p.high ?? p.close;
