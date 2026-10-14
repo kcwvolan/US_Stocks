@@ -16,7 +16,7 @@ const nodeMajor = parseInt(nodeVer.slice(1));
 checks.push({ label: `Node.js ${nodeVer}`, ok: nodeMajor >= 18, fix: 'Requires Node.js 18+' });
 
 // Dependencies — check node_modules directory directly (works for both CJS and ESM)
-for (const dep of ['yahoo-finance2', 'chalk', 'cli-table3']) {
+for (const dep of ['chalk', 'cli-table3', 'puppeteer-core']) {
   const ok = existsSync(path.join(root, 'node_modules', dep));
   checks.push({ label: `npm: ${dep}`, ok, fix: `Run: npm install` });
 }
