@@ -13,3 +13,7 @@ backtest/
 /*.txt
 CLAUDE copy.md
 scripts/.dp-tmp.js
+
+# 非本專案程式（本機保留，不上 GitHub）
+twse-analysis-main/
+us-stocks-devlog-review/
