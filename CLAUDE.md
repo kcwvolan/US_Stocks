@@ -52,6 +52,7 @@ Two scheduled jobs push to one Discord webhook (Taiwan time, daily):
 
 | Time | Script | What it sends |
 |---|---|---|
+| 17:30 | `scripts/discord-tw-chips-push.js` | Taiwan: TWSE institutional net buy/sell (T86, BFI82U) — foreign / trust / dealer totals plus top-10 buy and sell lists (ETFs excluded); skips weekends, retries 3× if TWSE hasn't published yet, silent on holidays. Logic in `src/twchips.js` |
 | 18:00 | `scripts/discord-push.js` | Market radar: Yahoo screeners (gainers / losers / most actives), top `DEEP_N` (5) scored names get a deep-analysis card |
 | 18:10 | `scripts/discord-watchlist-push.js` | Every ticker in `watchlist.json` (batched), one card each; optional `cardTickers` array limits which get image cards |
 
@@ -63,7 +64,7 @@ Two scheduled jobs push to one Discord webhook (Taiwan time, daily):
 
 ### Scheduling (launchd, not cron)
 
-- `setup-launchd.sh` copies `com.kcw.discord-market-push.plist` and `com.kcw.discord-watchlist-push.plist` to `~/Library/LaunchAgents/`, loads them, and removes any old cron entries. The plists have no weekday filter, so they run every day. The wrappers `run-market-push.sh` / `run-watchlist-push.sh` set PATH and append to `discord-push.log` / `discord-watchlist-push.log`.
+- `setup-launchd.sh` copies `com.kcw.discord-market-push.plist` and `com.kcw.discord-watchlist-push.plist` / `com.kcw.discord-tw-chips-push.plist` to `~/Library/LaunchAgents/`, loads them, and removes any old cron entries. The plists have no weekday filter, so they run every day. The wrappers `run-market-push.sh` / `run-watchlist-push.sh` / `run-tw-chips-push.sh` set PATH and append to `discord-push.log` / `discord-watchlist-push.log` / `discord-tw-chips-push.log`.
 - `setup-cron.sh` is the superseded cron approach; do not install it alongside launchd or each job pushes twice.
 - Check status: `launchctl list | grep discord` (second column is the last exit code). Re-run now: `launchctl kickstart -k gui/$(id -u)/com.kcw.discord-watchlist-push`.
 - Known pitfall: the project sits in `~/Documents`, which macOS protects. Under launchd, `/bin/bash` needs **Full Disk Access** (System Settings → Privacy & Security → Full Disk Access → add `/bin/bash`). Without it the job exits 126 before the script starts and nothing is written to the log, so the push silently never happens.

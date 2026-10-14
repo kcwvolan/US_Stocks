@@ -5,7 +5,7 @@ set -u
 
 AGENT_DIR="$HOME/Library/LaunchAgents"
 SCRIPT_DIR="/Users/kcw/Documents/AI_Workplace/US_Stocks"
-LABELS=("com.kcw.discord-market-push" "com.kcw.discord-watchlist-push")
+LABELS=("com.kcw.discord-market-push" "com.kcw.discord-watchlist-push" "com.kcw.discord-tw-chips-push")
 UID_NUM="$(id -u)"
 
 fail() { echo "❌ $1" >&2; exit 1; }
@@ -14,11 +14,11 @@ mkdir -p "$AGENT_DIR" || fail "無法建立 $AGENT_DIR"
 [ -w "$AGENT_DIR" ] || fail "$AGENT_DIR 不可寫入（擁有者：$(stat -f %Su "$AGENT_DIR")）。請執行：sudo chown \"$(id -un)\":staff \"$AGENT_DIR\""
 
 # 先移除舊 cron（若有）
-crontab -l 2>/dev/null | grep -v -e "discord-push.js" -e "discord-watchlist-push.js" | crontab - 2>/dev/null
+crontab -l 2>/dev/null | grep -v -e "discord-push.js" -e "discord-watchlist-push.js" -e "discord-tw-chips-push.js" | crontab - 2>/dev/null
 echo "🧹 已清除舊 cron 排程"
 
 # 賦予執行權限
-chmod +x "$SCRIPT_DIR/run-market-push.sh" "$SCRIPT_DIR/run-watchlist-push.sh" || fail "chmod 失敗"
+chmod +x "$SCRIPT_DIR/run-market-push.sh" "$SCRIPT_DIR/run-watchlist-push.sh" "$SCRIPT_DIR/run-tw-chips-push.sh" || fail "chmod 失敗"
 
 for L in "${LABELS[@]}"; do
   SRC="$SCRIPT_DIR/$L.plist"
@@ -48,9 +48,11 @@ echo "────────────────────────�
 
 echo ""
 echo "✅ launchd 排程已安裝："
+echo "   17:30  臺股三大法人買賣超    (discord-tw-chips-push.js，週一至週五)"
 echo "   18:00  高量能市場雷達報告    (discord-push.js)"
 echo "   18:10  Watchlist 16支深度分析 (discord-watchlist-push.js)"
 echo "特性：Mac 喚醒後如錯過時間，會立即補跑一次"
 echo "日誌："
 echo "  $SCRIPT_DIR/discord-push.log"
 echo "  $SCRIPT_DIR/discord-watchlist-push.log"
+echo "  $SCRIPT_DIR/discord-tw-chips-push.log"
