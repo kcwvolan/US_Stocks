@@ -4,6 +4,7 @@
  */
 import { existsSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import { convictionParts } from './analyze.js';
 
 const CHROME_CANDIDATES = [
   process.env.CHROME_PATH,
@@ -32,6 +33,7 @@ const n  = v => (v != null && !Number.isNaN(+v) ? +v : null);
 const f2 = v => (n(v) != null ? n(v).toFixed(2) : 'N/A');
 const f1 = v => (n(v) != null ? n(v).toFixed(1) : 'N/A');
 const sg = v => (+v >= 0 ? '+' : '');
+const sn = v => `${+v > 0 ? '+' : ''}${+v}`;
 const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 function fmtCap(v) {
   if (!v) return '';
@@ -41,6 +43,89 @@ function fmtCap(v) {
   return String(v);
 }
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+function stampText(d = new Date()) {
+  const fmt = tz => new Intl.DateTimeFormat('zh-TW', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(d);
+  const abbr = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' })
+    .formatToParts(d).find(x => x.type === 'timeZoneName')?.value ?? 'ET';
+  return `資料時間　台灣 ${fmt('Asia/Taipei')}（美東 ${fmt('America/New_York')} ${abbr}）`;
+}
+
+const nyMonth = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'numeric' });
+function fmtVol(v) {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
+  return String(Math.round(v));
+}
+
+function chartSvg(hist) {
+  const all = (hist ?? []).filter(d => n(d.close) != null);
+  if (all.length < 30) return '';
+  const sma = k => all.map((_, i) => (i + 1 < k ? null : all.slice(i + 1 - k, i + 1).reduce((a, d) => a + d.close, 0) / k));
+  const N = Math.min(120, all.length);
+  const off = all.length - N;
+  const rows = all.slice(off);
+  const m20 = sma(20).slice(off);
+  const m50 = sma(50).slice(off);
+
+  const W = 780, PR = 62, PH = 190, GAP = 14, VH = 60, AX = 22;
+  const pw = W - PR, H = PH + GAP + VH + AX;
+  const vals = [...rows.map(d => d.close), ...m20, ...m50].filter(v => v != null);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const span = hi - lo || 1, pad = span * 0.06;
+  const y = v => 4 + (PH - 8) * (1 - (v - (lo - pad)) / (span + 2 * pad));
+  const x = i => ((i + 0.5) * pw) / N;
+  const pts = arr => arr.map((v, i) => (v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`)).filter(Boolean).join(' ');
+
+  const closes = rows.map(d => d.close);
+  const col = closes.at(-1) >= closes[0] ? '#3DCC8A' : '#E8445A';
+  const area = `${x(0).toFixed(1)},${PH} ${pts(closes)} ${x(N - 1).toFixed(1)},${PH}`;
+
+  const vmax = Math.max(...rows.map(d => d.volume ?? 0)) || 1;
+  const bw = Math.max(1.5, (pw / N) * 0.7);
+  const vTop = PH + GAP;
+  const bars = rows.map((d, i) => {
+    const prev = i ? rows[i - 1].close : all[off - 1]?.close ?? d.close;
+    const h = ((d.volume ?? 0) / vmax) * VH;
+    return `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${(vTop + VH - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${d.close >= prev ? '#3DCC8A' : '#E8445A'}" opacity="0.75"/>`;
+  }).join('');
+
+  const grid = [hi, (hi + lo) / 2, lo].map(v =>
+    `<line x1="0" x2="${pw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#2B3445" stroke-width="1"/>` +
+    `<text x="${pw + 6}" y="${(y(v) + 4).toFixed(1)}" font-size="12" fill="#9AA6B8">${f2(v)}</text>`).join('');
+
+  let prevM = nyMonth.format(rows[0].date);
+  const ticks = rows.map((d, i) => {
+    const m = nyMonth.format(d.date);
+    if (m === prevM) return '';
+    prevM = m;
+    return `<text x="${x(i).toFixed(1)}" y="${H - 5}" font-size="12" fill="#9AA6B8" text-anchor="middle">${m}月</text>`;
+  }).join('');
+
+  const last = closes.at(-1);
+  return `<div class="chart"><div class="ctitle">近 ${N} 個交易日　成交價與成交量（日線）</div>
+<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg">
+${grid}
+<polygon points="${area}" fill="${col}" opacity="0.12"/>
+<polyline points="${pts(m50)}" fill="none" stroke="#6FA0FF" stroke-width="1.5"/>
+<polyline points="${pts(m20)}" fill="none" stroke="#C8A96E" stroke-width="1.5"/>
+<polyline points="${pts(closes)}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round"/>
+<circle cx="${x(N - 1).toFixed(1)}" cy="${y(last).toFixed(1)}" r="4" fill="${col}"/>
+<rect x="${pw + 2}" y="${(y(last) - 9).toFixed(1)}" width="${PR - 2}" height="18" rx="4" fill="${col}"/>
+<text x="${pw + 6}" y="${(y(last) + 4).toFixed(1)}" font-size="12" font-weight="700" fill="#0F1A2B">${f2(last)}</text>
+<text x="8" y="16" font-size="13" fill="${col}">━ 收盤價</text>
+<text x="86" y="16" font-size="13" fill="#C8A96E">━ 20日均線</text>
+<text x="176" y="16" font-size="13" fill="#6FA0FF">━ 50日均線</text>
+${bars}
+<text x="${pw + 6}" y="${vTop + 12}" font-size="12" fill="#9AA6B8">${fmtVol(vmax)}</text>
+<text x="${pw + 6}" y="${vTop + VH}" font-size="12" fill="#9AA6B8">成交量</text>
+${ticks}
+</svg></div>`;
+}
 
 function rating(score) {
   if (score >= 6)  return ['強力買入', '#3DCC8A'];
@@ -63,7 +148,7 @@ function entryNote(entry, price) {
   return d > 3 ? `<span class="warn">高於現價 ${f1(d)}%，需先反彈</span>` : '';
 }
 
-export function buildCardHtml({ sym, fund, ta, val, sigs, conviction, opts }) {
+export function buildCardHtml({ sym, fund, ta, val, sigs, conviction, opts, hist }) {
   const price = n(fund?.price);
   const chg = n(fund?.change1d) ?? 0;
   const [rText, rColor] = rating(conviction ?? 0);
@@ -78,6 +163,7 @@ export function buildCardHtml({ sym, fund, ta, val, sigs, conviction, opts }) {
   const earn = opts?.daysToEarnings != null && opts.daysToEarnings >= 0 && opts.daysToEarnings <= 35
     ? `<span class="chip">財報倒數 ${opts.daysToEarnings} 天</span>` : '';
   const p = ta?.pivots;
+  const cp = convictionParts(sigs, ta, val, opts);
 
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 *{box-sizing:border-box;margin:0}
@@ -102,24 +188,33 @@ body{width:900px;background:#141B27;color:#E6EAF0;font-family:'PingFang TC','Not
 ul{list-style:none;padding:0}li{font-size:17px;line-height:1.55}.dim{color:#5B6B7C}
 .lv{margin-top:24px;background:#1B2434;border-radius:14px;padding:16px 20px;font-size:18px;line-height:1.7}
 .lv b{color:#fff}.warn{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:#3A1B22;color:#FF8A9B;font-size:15px;font-weight:700}
+.stamp{margin-top:10px;font-size:17px;font-weight:700;color:#7EC8E3}
+.chart{margin-top:24px;background:#1B2434;border-radius:14px;padding:14px 20px 8px}
+.ctitle{font-size:17px;color:#9AA6B8;margin-bottom:4px}
+.parts{font-size:14px;color:#9AA6B8;margin-top:4px}
+.src{margin-top:4px;font-size:15px;color:#9AA6B8}
 .foot{margin-top:18px;font-size:14px;color:#5B6B7C}
 </style></head><body><div class="card">
 <div class="head"><div><div class="sym">${esc(sym)}</div><div class="name">${esc(fund?.name ?? '')}</div></div>
-<div style="text-align:right"><span class="badge">${rText}</span><div class="sub">Conviction ${conviction ?? 'N/A'}</div></div></div>
+<div style="text-align:right"><span class="badge">${rText}</span><div class="sub">Conviction ${conviction ?? 'N/A'}</div>
+<div class="parts">訊號 ${sn(cp.signals)}　技術 ${sn(cp.tech)}　估值 ${sn(cp.valuation)}　選擇權 ${sn(cp.options)}</div></div></div>
 <div class="price">$${f2(price)}<span class="chg">${chg >= 0 ? '▲' : '▼'} ${sg(chg)}${f2(chg)}%</span></div>
 <div class="sub">市值 ${esc(fund?.marketCapText ?? fmtCap(fund?.marketCap))}${earn}</div>
+<div class="stamp">${esc(stampText())}</div>
+<div class="src">資料來源　Yahoo Finance（報價、財務、歷史股價、選擇權）；技術指標與訊號為本機依其資料計算</div>
 <div class="grid">
 <div><div class="lab"><span>RSI 14</span><b style="color:${rsiColor}">${f1(rsi)}${rsi != null ? (rsi >= 70 ? '　超買' : rsi <= 30 ? '　超賣' : '') : ''}</b></div>${bar(rsi ?? 0, rsiColor)}</div>
 <div><div class="lab"><span>距 52 週高點</span><b>${fromHigh != null ? f1(fromHigh) + '%' : 'N/A'}</b></div>${bar(fromHigh != null ? 100 + fromHigh : 0, '#6FA0FF')}</div>
 <div><div class="lab"><span>目標價 $${f2(val?.targetPrice)}</span><b style="color:${(upside ?? 0) >= 0 ? '#3DCC8A' : '#E8445A'}">${upside != null ? sg(upside) + f1(upside) + '%' : 'N/A'}</b></div>${bar(upside != null ? Math.abs(upside) / 1.5 : 0, (upside ?? 0) >= 0 ? '#3DCC8A' : '#E8445A')}</div>
 <div><div class="lab"><span>IV</span><b>${opts?.iv1 != null ? (opts.iv1 * 100).toFixed(1) + '%' : 'N/A'}</b></div>${bar(opts?.iv1 != null ? opts.iv1 * 100 : 0, '#C8A96E')}</div>
 </div>
+${chartSvg(hist)}
 <div class="cols"><div class="box"><h4 style="color:#3DCC8A">利多訊號</h4><ul>${li(bulls, '#BFEBD3')}</ul></div>
 <div class="box"><h4 style="color:#E8445A">利空訊號</h4><ul>${li(bears, '#F5C0C8')}</ul></div></div>
 <div class="lv"><div>進場 <b>${esc(ta?.entry ?? 'N/A')}</b>${entryNote(ta?.entry, price)}</div>
 <div>停損 <b>${esc(ta?.stop ?? 'N/A')}</b></div>
 ${p ? `<div>支撐 <b>$${f2(p.s1)}</b> / <b>$${f2(p.s2)}</b>　壓力 <b>$${f2(p.r1)}</b> / <b>$${f2(p.r2)}</b></div>` : ''}</div>
-<div class="foot">資料來源：Yahoo Finance　|　僅供參考，非投資建議</div>
+<div class="foot">評級為規則計分，非人工判斷：≥6 強力買入／≥3 買入／≥0 持有／≥−3 賣出／其餘強力賣出。僅供參考，非投資建議</div>
 </div></body></html>`;
 }
 

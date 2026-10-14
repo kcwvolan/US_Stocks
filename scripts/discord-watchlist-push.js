@@ -9,7 +9,7 @@ import {
   getQuote, getSummary, getHistory, getHistoryFull,
   getOptionsWithDteFloor, getCalendar,
 } from '../src/fetch.js';
-import { fundamentals, technicals, valuationAnalysis, signalBlock } from '../src/analyze.js';
+import { fundamentals, technicals, valuationAnalysis, signalBlock, convictionParts } from '../src/analyze.js';
 import { computeTechnicals } from '../src/technicals.js';
 import { computeOptions } from '../src/options.js';
 
@@ -115,16 +115,7 @@ function rsiLabel(v) {
 }
 
 function scoreConviction(sigs, ta, val, opts) {
-  let s = sigs?.score ?? 0;
-  if (ta?.rating === 'BULLISH') s += 2;
-  else if (ta?.rating === 'BEARISH') s -= 2;
-  if (val?.upside > 25) s += 1;
-  else if (val?.upside < -10) s -= 1;
-  if (opts?.pcr != null) {
-    if (opts.pcr < 0.6) s += 0.5;
-    else if (opts.pcr > 1.5) s -= 0.5;
-  }
-  return +s.toFixed(2);
+  return convictionParts(sigs, ta, val, opts).total;
 }
 
 // ── 深度分析 ──────────────────────────────────────────────────
@@ -144,7 +135,7 @@ async function deepAnalyze(sym) {
   const sigs = signalBlock(fund, tech);
   const opts = optData ? computeOptions(quote, optData, calendar) : null;
   const conviction = scoreConviction(sigs, ta, val, opts);
-  return { sym, fund, tech, ta, val, sigs, opts, conviction };
+  return { sym, fund, tech, ta, val, sigs, opts, conviction, hist: histFull };
 }
 
 async function batchDeep(syms) {

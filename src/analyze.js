@@ -203,3 +203,12 @@ function formatLarge(n) {
   if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
   return n.toString();
 }
+
+export function convictionParts(sigs, ta, val, opts) {
+  const signals = sigs?.score ?? 0;
+  const tech = ta?.rating === 'BULLISH' ? 2 : ta?.rating === 'BEARISH' ? -2 : 0;
+  const valuation = val?.upside > 25 ? 1 : val?.upside < -10 ? -1 : 0;
+  const options = opts?.pcr == null ? 0 : opts.pcr < 0.6 ? 0.5 : opts.pcr > 1.5 ? -0.5 : 0;
+  const total = +(signals + tech + valuation + options).toFixed(2);
+  return { signals, tech, valuation, options, total };
+}

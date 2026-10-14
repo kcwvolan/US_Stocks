@@ -14,7 +14,7 @@ mkdir -p "$AGENT_DIR" || fail "無法建立 $AGENT_DIR"
 [ -w "$AGENT_DIR" ] || fail "$AGENT_DIR 不可寫入（擁有者：$(stat -f %Su "$AGENT_DIR")）。請執行：sudo chown \"$(id -un)\":staff \"$AGENT_DIR\""
 
 # 先移除舊 cron（若有）
-crontab -l 2>/dev/null | grep -v "discord-push.js" | crontab - 2>/dev/null
+crontab -l 2>/dev/null | grep -v -e "discord-push.js" -e "discord-watchlist-push.js" | crontab - 2>/dev/null
 echo "🧹 已清除舊 cron 排程"
 
 # 賦予執行權限
