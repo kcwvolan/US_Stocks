@@ -79,3 +79,13 @@ test('DTE window: expiry below floor is never returned', () => {
   // Confirm that each date actually has DTE < floor (validates the fixture itself)
   for (const d of dates) assert.ok(dte(d) < floor);
 });
+
+import { dayChange } from '../src/fetch.js';
+test('dayChange uses the previous daily close, not the 5-day-window start', () => {
+  const r = dayChange(2490, { chartPreviousClose: 2585 }, [2585, 2600, 2550, 2490, 2490]);
+  assert.equal(r.prev, 2490); assert.equal(r.change, 0);
+  assert.equal(dayChange(110, { previousClose: 100, chartPreviousClose: 50 }, [1, 2]).change, 10);
+  assert.equal(dayChange(105, {}, [null, 100, 105]).prev, 100);
+  assert.equal(dayChange(105, { chartPreviousClose: 90 }, [105]).prev, 90);
+  assert.equal(dayChange(null, {}, []).change, null);
+});

@@ -39,12 +39,21 @@ async function yf(url, useSession = false) {
   return res.json();
 }
 
+// 單日漲跌：chartPreviousClose 是「5 日區間開始前」的收盤，不是昨收，直接拿來算會變成 5 日漲跌。
+// 優先用 meta.previousClose；沒有就取日線收盤序列裡「最後一根的前一根」。
+export function dayChange(price, meta, closes) {
+  const valid = (closes ?? []).filter(c => c != null);
+  const prev = meta?.previousClose ?? (valid.length >= 2 ? valid.at(-2) : meta?.chartPreviousClose ?? null);
+  const change = price != null && prev ? ((price - prev) / prev) * 100 : null;
+  return { prev, change };
+}
+
 export async function getQuote(symbol) {
   const data = await yf(`${BASE1}/v8/finance/chart/${symbol}?interval=1d&range=5d`);
-  const meta = data.chart.result[0].meta;
+  const r0 = data.chart.result[0];
+  const meta = r0.meta;
   const price = meta.regularMarketPrice;
-  const prev = meta.previousClose ?? meta.chartPreviousClose;
-  const change = price && prev ? ((price - prev) / prev) * 100 : null;
+  const { prev, change } = dayChange(price, meta, r0.indicators?.quote?.[0]?.close);
 
   // marketCap not in chart meta — derive from summary if available, else null
   return {
