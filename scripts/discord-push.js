@@ -6,9 +6,9 @@
 import {
   getScreener, getPreMarket, getMarketNews,
   getQuote, getSummary, getHistory, getHistoryFull,
-  getOptionsWithDteFloor, getCalendar,
+  getOptionsWithDteFloor, getCalendar, getNews,
 } from '../src/fetch.js';
-import { fundamentals, technicals, valuationAnalysis, signalBlock, incomeHistory, convictionParts } from '../src/analyze.js';
+import { fundamentals, technicals, valuationAnalysis, signalBlock, incomeHistory, convictionParts, riskVeto } from '../src/analyze.js';
 import { computeTechnicals } from '../src/technicals.js';
 import { computeOptions } from '../src/options.js';
 
@@ -128,7 +128,8 @@ function signalMatrix(sigs) {
 function buildRadarEmbed({ sym, fund, ta, val, sigs, opts, conviction, screenData }) {
   const volR  = screenData?.volRatio ?? ta?.volRatio;
   const chg   = fund.change1d ?? 0;
-  const r     = ratingInfo(conviction);
+  const veto  = riskVeto(conviction, ta, opts);
+  const r     = veto.vetoed ? { ...ratingInfo(2), text: `持  有（風控否決：${veto.reasons.join('、')}）` } : ratingInfo(conviction);
   const mat   = signalMatrix(sigs);
 
   // ── 動能熱力值（0–10） ────────────────────────────────────
@@ -218,13 +219,14 @@ function buildRadarEmbed({ sym, fund, ta, val, sigs, opts, conviction, screenDat
 // 深度分析
 // ══════════════════════════════════════════════════════════════
 async function deepAnalyze(sym) {
-  const [quote, summary, history, histFull, optData, calendar] = await Promise.all([
+  const [quote, summary, history, histFull, optData, calendar, news] = await Promise.all([
     getQuote(sym),
     getSummary(sym),
     getHistory(sym),
     getHistoryFull(sym),
     getOptionsWithDteFloor(sym, 7).catch(() => null),
     getCalendar(sym).catch(() => null),
+    getNews(sym, 3).catch(() => []),
   ]);
   const fund = fundamentals(summary, quote);
   const tech = technicals(history);
@@ -233,7 +235,7 @@ async function deepAnalyze(sym) {
   const sigs = signalBlock(fund, tech);
   const opts = optData ? computeOptions(quote, optData, calendar) : null;
   const conviction = scoreConviction(sigs, ta, val, opts);
-  return { sym, fund, tech, ta, val, sigs, opts, conviction, hist: histFull };
+  return { sym, fund, tech, ta, val, sigs, opts, conviction, hist: histFull, news };
 }
 
 // ══════════════════════════════════════════════════════════════

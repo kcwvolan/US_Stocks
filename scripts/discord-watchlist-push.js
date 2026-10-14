@@ -7,9 +7,9 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import {
   getQuote, getSummary, getHistory, getHistoryFull,
-  getOptionsWithDteFloor, getCalendar,
+  getOptionsWithDteFloor, getCalendar, getNews,
 } from '../src/fetch.js';
-import { fundamentals, technicals, valuationAnalysis, signalBlock, convictionParts } from '../src/analyze.js';
+import { fundamentals, technicals, valuationAnalysis, signalBlock, convictionParts, riskVeto } from '../src/analyze.js';
 import { computeTechnicals } from '../src/technicals.js';
 import { computeOptions } from '../src/options.js';
 import { makeEntry, appendRatings } from '../src/ratinglog.js';
@@ -121,13 +121,14 @@ function scoreConviction(sigs, ta, val, opts) {
 
 // ── 深度分析 ──────────────────────────────────────────────────
 async function deepAnalyze(sym) {
-  const [quote, summary, history, histFull, optData, calendar] = await Promise.all([
+  const [quote, summary, history, histFull, optData, calendar, news] = await Promise.all([
     getQuote(sym),
     getSummary(sym),
     getHistory(sym),
     getHistoryFull(sym),
     getOptionsWithDteFloor(sym, 7).catch(() => null),
     getCalendar(sym).catch(() => null),
+    getNews(sym, 3).catch(() => []),
   ]);
   const fund = fundamentals(summary, quote);
   const tech = technicals(history);
@@ -136,7 +137,7 @@ async function deepAnalyze(sym) {
   const sigs = signalBlock(fund, tech);
   const opts = optData ? computeOptions(quote, optData, calendar) : null;
   const conviction = scoreConviction(sigs, ta, val, opts);
-  return { sym, fund, tech, ta, val, sigs, opts, conviction, hist: histFull };
+  return { sym, fund, tech, ta, val, sigs, opts, conviction, hist: histFull, news };
 }
 
 async function batchDeep(syms) {
@@ -177,7 +178,7 @@ function buildStockEmbed({ sym, fund, tech, ta, val, sigs, opts, conviction }) {
       name: `${sym}  ·  ${fund.name ?? sym}`,
     },
     title: `＄${f2(fund.price)}  ${chg >= 0 ? '▲' : '▼'} ${pct(chg)}`,
-    description: `**${convictionLabel(conviction)}**　Conviction **${conviction}**　市值 ${fmtCap(fund.marketCap)}\n\`\`\`diff\n${sigBlock}\n\`\`\``,
+    description: `**${riskVeto(conviction, ta, opts).vetoed ? '🟡 持  有（風控否決：' + riskVeto(conviction, ta, opts).reasons.join('、') + '）' : convictionLabel(conviction)}**　Conviction **${conviction}**　市值 ${fmtCap(fund.marketCap)}\n\`\`\`diff\n${sigBlock}\n\`\`\``,
     fields: [],
     footer: { text: '資料來源：Yahoo Finance　|　僅供參考，非投資建議' },
     timestamp: new Date().toISOString(),

@@ -4,7 +4,7 @@
  */
 import { existsSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
-import { convictionParts } from './analyze.js';
+import { convictionParts, riskVeto } from './analyze.js';
 
 const CHROME_CANDIDATES = [
   process.env.CHROME_PATH,
@@ -127,6 +127,13 @@ ${ticks}
 </svg></div>`;
 }
 
+function newsHtml(news) {
+  if (!news?.length) return '';
+  const cut = t => (t.length > 80 ? t.slice(0, 79) + '…' : t);
+  const d = t => (t ? new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' }).format(t) : '');
+  return `<div class="news">近期新聞標題（僅供參考，未納入評分）${news.map(n => `<div><b>${esc(cut(n.title))}</b>　${esc(n.publisher)} ${d(n.time)}</div>`).join('')}</div>`;
+}
+
 function rating(score) {
   if (score >= 6)  return ['強力買入', '#3DCC8A'];
   if (score >= 3)  return ['買入', '#7EC8E3'];
@@ -148,10 +155,11 @@ function entryNote(entry, price) {
   return d > 3 ? `<span class="warn">高於現價 ${f1(d)}%，需先反彈</span>` : '';
 }
 
-export function buildCardHtml({ sym, fund, ta, val, sigs, conviction, opts, hist }) {
+export function buildCardHtml({ sym, fund, ta, val, sigs, conviction, opts, hist, news }) {
   const price = n(fund?.price);
   const chg = n(fund?.change1d) ?? 0;
-  const [rText, rColor] = rating(conviction ?? 0);
+  const veto = riskVeto(conviction ?? 0, ta, opts);
+  const [rText, rColor] = rating(veto.vetoed ? 2 : (conviction ?? 0));
   const chgColor = chg >= 0 ? '#3DCC8A' : '#E8445A';
   const rsi = n(ta?.rsi14);
   const rsiColor = rsi == null ? '#5B6B7C' : rsi >= 70 ? '#E8445A' : rsi <= 30 ? '#7EC8E3' : '#C8A96E';
@@ -192,12 +200,15 @@ ul{list-style:none;padding:0}li{font-size:17px;line-height:1.55}.dim{color:#5B6B
 .chart{margin-top:24px;background:#1B2434;border-radius:14px;padding:14px 20px 8px}
 .ctitle{font-size:17px;color:#9AA6B8;margin-bottom:4px}
 .parts{font-size:14px;color:#9AA6B8;margin-top:4px}
+.veto{white-space:nowrap;font-size:14px;color:#F39C12;margin-top:4px}
+.news{margin-top:12px;font-size:14px;color:#9AA6B8;line-height:1.5}.news b{color:#C9D3E0;font-weight:500}
 .src{margin-top:4px;font-size:15px;color:#9AA6B8}
 .foot{margin-top:18px;font-size:14px;color:#5B6B7C}
 </style></head><body><div class="card">
 <div class="head"><div><div class="sym">${esc(sym)}</div><div class="name">${esc(fund?.name ?? '')}</div></div>
 <div style="text-align:right"><span class="badge">${rText}</span><div class="sub">Conviction ${conviction ?? 'N/A'}</div>
-<div class="parts">訊號 ${sn(cp.signals)}　技術 ${sn(cp.tech)}　估值 ${sn(cp.valuation)}　選擇權 ${sn(cp.options)}</div></div></div>
+<div class="parts">訊號 ${sn(cp.signals)}　技術 ${sn(cp.tech)}　估值 ${sn(cp.valuation)}　選擇權 ${sn(cp.options)}</div>
+${veto.vetoed ? `<div class="veto">⛔ 風控否決：原為${esc(veto.original)}（${esc(veto.reasons.join('、'))}）</div>` : ''}</div></div>
 <div class="price">$${f2(price)}<span class="chg">${chg >= 0 ? '▲' : '▼'} ${sg(chg)}${f2(chg)}%</span></div>
 <div class="sub">市值 ${esc(fund?.marketCapText ?? fmtCap(fund?.marketCap))}${earn}</div>
 <div class="stamp">${esc(stampText())}</div>
@@ -214,7 +225,8 @@ ${chartSvg(hist)}
 <div class="lv"><div>進場 <b>${esc(ta?.entry ?? 'N/A')}</b>${entryNote(ta?.entry, price)}</div>
 <div>停損 <b>${esc(ta?.stop ?? 'N/A')}</b></div>
 ${p ? `<div>支撐 <b>$${f2(p.s1)}</b> / <b>$${f2(p.s2)}</b>　壓力 <b>$${f2(p.r1)}</b> / <b>$${f2(p.r2)}</b></div>` : ''}</div>
-<div class="foot">評級為規則計分，非人工判斷：≥6 強力買入／≥3 買入／≥0 持有／≥−3 賣出／其餘強力賣出。僅供參考，非投資建議</div>
+${newsHtml(news)}
+<div class="foot">評級為規則計分，非人工判斷：≥6 強力買入／≥3 買入／≥0 持有／≥−3 賣出／其餘強力賣出；買入級以上遇均線空頭排列、財報 3 天內或 RSI≥80 時降為持有。僅供參考，非投資建議</div>
 </div></body></html>`;
 }
 

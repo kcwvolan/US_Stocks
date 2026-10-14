@@ -217,3 +217,16 @@ export function ratingLabel(score) {
   if (score >= -3) return '賣出';
   return '強力賣出';
 }
+
+// Risk veto: a rule-based score can't be a buy while a hard risk condition holds.
+// The numeric score is unchanged; only the displayed rating is capped at 持有.
+export function riskVeto(total, ta, opts) {
+  const reasons = [];
+  if (ta?.trendBear) reasons.push('均線空頭排列');
+  const d = opts?.daysToEarnings;
+  if (d != null && d >= 0 && d <= 3) reasons.push(`財報 ${d} 天內`);
+  if (ta?.rsi14 != null && ta.rsi14 >= 80) reasons.push('RSI ≥ 80 極度超買');
+  const original = ratingLabel(total);
+  const vetoed = total >= 3 && reasons.length > 0;
+  return { vetoed, reasons, original, label: vetoed ? '持有' : original };
+}

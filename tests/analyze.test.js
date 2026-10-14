@@ -131,3 +131,27 @@ test('technicals: RSI = 100 when all changes are gains', () => {
   const t = technicals(makeHistory(closes));
   assert.equal(parseFloat(t.rsi14), 100);
 });
+
+import { riskVeto } from '../src/analyze.js';
+import { parseNews } from '../src/fetch.js';
+
+test('riskVeto caps buy-level ratings only when a hard risk exists', () => {
+  assert.deepEqual(riskVeto(4, { trendBear: true }, null), { vetoed: true, reasons: ['均線空頭排列'], original: '買入', label: '持有' });
+  assert.equal(riskVeto(7, { rsi14: 80 }, null).label, '持有');
+  assert.equal(riskVeto(7, { rsi14: 79.9 }, { daysToEarnings: 4 }).label, '強力買入');
+  assert.equal(riskVeto(3, {}, { daysToEarnings: 3 }).label, '持有');
+  assert.equal(riskVeto(3, {}, { daysToEarnings: -1 }).vetoed, false);
+  assert.equal(riskVeto(2.9, { trendBear: true }, null).vetoed, false);
+  assert.equal(riskVeto(-5, { trendBear: true }, null).label, '強力賣出');
+  assert.equal(riskVeto(5, { trendBear: true, rsi14: 85 }, { daysToEarnings: 1 }).reasons.length, 3);
+});
+
+test('parseNews keeps only items tagged with the symbol', () => {
+  const data = { news: [
+    { title: 'A', publisher: 'P', link: 'u', providerPublishTime: 1791980498, relatedTickers: ['NVDA', 'AMD'] },
+    { title: 'B', relatedTickers: ['LLY'] }, { relatedTickers: ['NVDA'] },
+  ] };
+  const n = parseNews(data, 'nvda', 3);
+  assert.equal(n.length, 1); assert.equal(n[0].title, 'A'); assert.ok(n[0].time instanceof Date);
+  assert.deepEqual(parseNews({}, 'X'), []);
+});

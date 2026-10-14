@@ -195,3 +195,22 @@ export async function getMarketNews(count = 8) {
     pubDate:   n.pubTime ? new Date(n.pubTime * 1000).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' }) : '',
   }));
 }
+
+// ── Per-symbol news (headlines only, not scored) ──────────────────────────────
+export function parseNews(data, symbol, count = 3) {
+  const sym = String(symbol).toUpperCase();
+  return (data?.news ?? [])
+    .filter(n => n?.title && (n.relatedTickers ?? []).map(String).includes(sym))
+    .slice(0, count)
+    .map(n => ({
+      title: n.title,
+      publisher: n.publisher ?? '',
+      link: n.link ?? '',
+      time: n.providerPublishTime ? new Date(n.providerPublishTime * 1000) : null,
+    }));
+}
+
+export async function getNews(symbol, count = 3) {
+  const data = await yf(`${BASE2}/v1/finance/search?q=${encodeURIComponent(symbol)}&newsCount=${count * 3}&quotesCount=0`);
+  return parseNews(data, symbol, count);
+}
