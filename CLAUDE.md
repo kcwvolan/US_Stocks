@@ -22,7 +22,7 @@ Multi-symbol support: `stock-eval` and `stock-screen` accept multiple tickers; a
 
 - `src/fetch.js` — Yahoo Finance API calls (quote, summary, history, options, calendar); session/crumb auth handled internally
 - `src/analyze.js` — pure analysis functions: `fundamentals`, `technicals`, `valuationAnalysis`, `signalBlock`, `incomeHistory`, `convictionParts`
-- `src/technicals.js`, `src/options.js` — technical indicators / options metrics used by the Discord pushes
+- `src/technicals.js`, `src/options.js` — technical indicators (single shared implementation; RSI uses Wilder smoothing, flat series = 50) / options metrics (IV below 1% treated as missing) used by the Discord pushes and CLI scripts
 - `src/report.js` — CLI rendering via chalk + cli-table3: `printReport`, `printDeep`
 - `src/card.js` — Discord stock card: HTML → PNG via puppeteer-core + local Chrome (see Discord Pushes)
 - `src/chart.js` — QuickChart change-% bar chart for the radar embed
