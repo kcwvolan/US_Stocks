@@ -3,3 +3,13 @@ node_modules/
 *.log
 .DS_Store
 *.bak
+OUT/
+RAW/
+WIKI/
+reports/
+data/
+backtest/
+.claude/
+/*.txt
+CLAUDE copy.md
+scripts/.dp-tmp.js
