@@ -17,3 +17,6 @@ scripts/.dp-tmp.js
 # 非本專案程式（本機保留，不上 GitHub）
 twse-analysis-main/
 us-stocks-devlog-review/
+
+# 每日評級紀錄（本機產生，iCloud 已同步）
+data/rating-log.jsonl

@@ -12,6 +12,7 @@ import {
 import { fundamentals, technicals, valuationAnalysis, signalBlock, convictionParts } from '../src/analyze.js';
 import { computeTechnicals } from '../src/technicals.js';
 import { computeOptions } from '../src/options.js';
+import { makeEntry, appendRatings } from '../src/ratinglog.js';
 
 const __dir     = dirname(fileURLToPath(import.meta.url));
 const WATCHLIST = JSON.parse(readFileSync(join(__dir, '../watchlist.json'), 'utf8')).tickers;
@@ -314,6 +315,12 @@ await sendEmbed({
 process.stdout.write(`🔍 開始深度分析 ${WATCHLIST.length} 支...\n`);
 const deepAll = await batchDeep(WATCHLIST);
 deepAll.sort((a, b) => b.conviction - a.conviction);
+
+// 每日評級紀錄（供 scripts/rating-tracker.js 事後比對報酬）；失敗不影響推播
+try {
+  const n = appendRatings(join(__dir, '../data/rating-log.jsonl'), deepAll.map(makeEntry));
+  process.stdout.write(`🗂️ 評級紀錄已寫入（累計 ${n} 筆）\n`);
+} catch (e) { process.stderr.write(`評級紀錄寫入失敗: ${e.message}\n`); }
 
 // Discord 允許一次最多 10 個 embed；每支一個，兩兩一批避免超限
 // 單日波動最大的 3 檔以圖片卡片呈現，其餘維持文字 embed；圖片失敗自動退回文字

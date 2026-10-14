@@ -208,3 +208,12 @@ export function convictionParts(sigs, ta, val, opts) {
   const total = +(signals + tech + valuation + options).toFixed(2);
   return { signals, tech, valuation, options, total };
 }
+
+// Rating thresholds live here once; card.js and the rating log both use it.
+export function ratingLabel(score) {
+  if (score >= 6) return '強力買入';
+  if (score >= 3) return '買入';
+  if (score >= 0) return '持有';
+  if (score >= -3) return '賣出';
+  return '強力賣出';
+}
