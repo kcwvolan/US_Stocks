@@ -1,7 +1,8 @@
-/** 類股趨勢觀察（命令列）：node scripts/sector-trend.js */
+/** 類股趨勢觀察（命令列）：node scripts/sector-trend.js［--push 只把重點類股 embed 推到 Discord］ */
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { readLog, sectorStats } from '../src/sectors.js';
+import { readLog, sectorStats, sectorEmbed } from '../src/sectors.js';
+import { getWebhook } from '../src/webhook.js';
 
 const file = join(dirname(fileURLToPath(import.meta.url)), '../data/mover-log.jsonl');
 const log = readLog(file);
@@ -13,3 +14,9 @@ for (const w of sectorStats(log)) {
   for (const r of w.rows) console.log(r.sector.padEnd(10 - Math.max(0, [...r.sector].length - 4)) + `${String(r.up).padStart(4)}  ${String(r.down).padStart(4)}  ${String(r.net).padStart(4)}  ${String(r.active).padStart(4)}  ${f(r.avgChg).padStart(8)}`);
 }
 console.log('\n※ 以漲幅榜／跌幅榜／成交量榜上榜次數統計，不是法人買賣超；歷史無法回補，資料從開始記錄日起累積。');
+
+if (process.argv.includes('--push')) {
+  const res = await fetch(getWebhook(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ embeds: [sectorEmbed(sectorStats(log))] }) });
+  if (!res.ok) throw new Error(`Discord ${res.status}: ${await res.text()}`);
+  console.log('✅ 已推送類股趨勢 embed');
+}

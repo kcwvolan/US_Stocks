@@ -2,7 +2,10 @@
  * 臺股三大法人買賣超每日推播（證交所 T86／BFI82U）
  * 週一至週五執行；證交所約下午公布，尚未公布則每 5 分鐘重試，最多 3 次；休市日無資料則不推。
  */
-import { fetchChips, topN, lots } from '../src/twchips.js';
+import { readFileSync, existsSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { fetchChips, topN, lots, pickWatch } from '../src/twchips.js';
 import { getWebhook } from '../src/webhook.js';
 
 const WEBHOOK = getWebhook();
@@ -39,12 +42,25 @@ const rankEmbed = (title, key, color) => {
   };
 };
 
+// 自選股（tw-watchlist.json，本機檔、不進 Git）：每檔列外資／投信／自營商／合計（張）
+const wlFile = join(dirname(fileURLToPath(import.meta.url)), '../tw-watchlist.json');
+const watch = existsSync(wlFile) ? JSON.parse(readFileSync(wlFile, 'utf8')).tickers ?? [] : [];
+const L = v => `${v >= 0 ? '+' : ''}${lots(v).toLocaleString('en-US')}`;
+const watchEmbed = watch.length ? {
+  color: 0xF39C12,
+  title: '⭐ 自選股三大法人買賣超（張）',
+  description: '```diff\n' + pickWatch(data.rows, watch).map(({ code, name, row }) =>
+    row ? `${row.total >= 0 ? '+' : '-'} ${code} ${name}　外 ${L(row.foreign)}　投 ${L(row.trust)}　自 ${L(row.dealer)}　合 ${L(row.total)}`
+        : `  ${code} ${name}　無資料`).join('\n') + '\n```',
+} : null;
+
 const s = data.summary;
-const footer = { text: '資料來源：臺灣證券交易所（三大法人買賣超日報）｜排名不含 ETF｜僅供參考，非投資建議' };
+const footer = { text: '資料來源：臺灣證券交易所、證券櫃檯買賣中心（三大法人買賣超）｜排名不含 ETF｜僅供參考，非投資建議' };
 const embeds = [
   {
     color: 0x2B2D31,
     title: `🇹🇼 臺股三大法人買賣超　${dateText}`,
+    footer: { text: '合計金額為上市；排名與自選股含上市＋上櫃' },
     description: '```diff\n' + [
       `${s.foreign >= 0 ? '+' : '-'} 外資　${yi(s.foreign)} 億元`,
       `${s.trust >= 0 ? '+' : '-'} 投信　${yi(s.trust)} 億元`,
@@ -52,6 +68,7 @@ const embeds = [
       `${s.total >= 0 ? '+' : '-'} 合計　${yi(s.total)} 億元`,
     ].join('\n') + '\n```',
   },
+  ...(watchEmbed ? [watchEmbed] : []),
   rankEmbed('三大法人合計', 'total', 0x6FA0FF),
   rankEmbed('外資', 'foreign', 0xC8A96E),
   { ...rankEmbed('投信', 'trust', 0x3DCC8A), footer, timestamp: new Date().toISOString() },
@@ -59,4 +76,4 @@ const embeds = [
 
 const res = await fetch(WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ embeds }) });
 if (!res.ok) throw new Error(`Discord ${res.status}: ${await res.text()}`);
-console.log(`✅ 已推送臺股三大法人買賣超（${dateText}，個股 ${data.rows.length} 檔）`);
+console.log(`✅ 已推送臺股三大法人買賣超（${dateText}，個股 ${data.rows.length} 檔（上市 ${data.listedCount}／上櫃 ${data.otcCount}））`);

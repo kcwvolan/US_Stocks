@@ -58,10 +58,33 @@ async function getJson(url) {
   return res.json();
 }
 
+// 上櫃（櫃買中心）三大法人買賣明細：24 欄固定版型
+// 0 代號 1 名稱 | 8-10 外資及陸資合計 | 11-13 投信 | 20-22 自營商合計 | 23 三大法人合計（股）
+export function parseTpex(json) {
+  const t = json?.tables?.[0];
+  if (json?.stat !== 'ok' || !t?.data?.length) return [];
+  if (t.fields?.length !== 24) throw new Error('TPEx 欄位格式改變');
+  return t.data.map(r => ({
+    code: String(r[0]).trim(), name: String(r[1]).trim(),
+    foreign: num(r[10]), trust: num(r[13]), dealer: num(r[22]), total: num(r[23]),
+  }));
+}
+
+// 依代號挑出自選股；找不到的（停牌、休市、指數）回傳 null
+export function pickWatch(rows, watch) {
+  const by = new Map(rows.map(r => [r.code, r]));
+  return watch.map(w => ({ code: w.code, name: w.name, row: by.get(w.code) ?? null }));
+}
+
 export async function fetchChips(yyyymmdd) {
-  const [amt, stk] = await Promise.all([
+  const slash = `${yyyymmdd.slice(0, 4)}/${yyyymmdd.slice(4, 6)}/${yyyymmdd.slice(6)}`;
+  const [amt, stk, otc] = await Promise.all([
     getJson(`${BASE}/BFI82U?dayDate=${yyyymmdd}&type=day&response=json`),
     getJson(`${BASE}/T86?date=${yyyymmdd}&selectType=ALLBUT0999&response=json`),
+    getJson(`https://www.tpex.org.tw/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date=${slash}&id=&response=json`)
+      .catch(e => { process.stderr.write(`上櫃資料抓取失敗（只推上市）: ${e.message}\n`); return null; }),
   ]);
-  return { summary: parseBFI82U(amt), rows: parseT86(stk) };
+  const listed = parseT86(stk);
+  const otcRows = otc ? parseTpex(otc) : [];
+  return { summary: parseBFI82U(amt), rows: [...listed, ...otcRows], listedCount: listed.length, otcCount: otcRows.length };
 }

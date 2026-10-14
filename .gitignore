@@ -22,3 +22,4 @@ us-stocks-devlog-review/
 data/rating-log.jsonl
 data/mover-log.jsonl
 data/sector-cache.json
+tw-watchlist.json

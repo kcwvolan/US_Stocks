@@ -52,8 +52,8 @@ Two scheduled jobs push to one Discord webhook (Taiwan time, daily):
 
 | Time | Script | What it sends |
 |---|---|---|
-| 17:30 | `scripts/discord-tw-chips-push.js` | Taiwan: TWSE institutional net buy/sell (T86, BFI82U) — foreign / trust / dealer totals plus top-10 buy and sell lists (ETFs excluded); skips weekends, retries 3× if TWSE hasn't published yet, silent on holidays. Logic in `src/twchips.js` |
-| 18:00 | `scripts/discord-push.js` | Market radar: Yahoo screeners (gainers / losers / most actives), top `DEEP_N` (5) scored names get a deep-analysis card; afterwards logs the top 25 of each list with sector to `data/mover-log.jsonl` (git-ignored; sectors cached in `data/sector-cache.json`) and posts a sector-trend embed for the last 10/30/60/120 trading days (`src/sectors.js`; CLI: `node scripts/sector-trend.js`). Lists can't be back-filled, so long windows fill up over time |
+| 17:30 | `scripts/discord-tw-chips-push.js` | Taiwan: TWSE institutional net buy/sell (T86, BFI82U) — foreign / trust / dealer totals plus top-10 buy and sell lists (ETFs excluded); skips weekends, retries 3× if TWSE hasn't published yet, silent on holidays; also lists per-stock figures for `tw-watchlist.json` (local, git-ignored; includes listed + OTC via TPEx). Logic in `src/twchips.js` |
+| 18:00 | `scripts/discord-push.js` | Market radar: Yahoo screeners (gainers / losers / most actives), top `DEEP_N` (5) scored names get a deep-analysis card; afterwards logs the top 25 of each list with sector to `data/mover-log.jsonl` (git-ignored; sectors cached in `data/sector-cache.json`) and posts a sector-trend embed (focus sectors 科技／能源, `FOCUS_SECTORS`) for the last 10/30/60/120 trading days (`src/sectors.js`; CLI: `node scripts/sector-trend.js`). Lists can't be back-filled, so long windows fill up over time |
 | 18:10 | `scripts/discord-watchlist-push.js` | Every ticker in `watchlist.json` (batched), one card each; optional `cardTickers` array limits which get image cards |
 
 - Running either script by hand **really posts to Discord**. To test a card without posting, call `renderStockCard()` from `src/card.js` and write the PNG to disk.

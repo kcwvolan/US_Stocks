@@ -89,22 +89,25 @@ export function sectorStats(log, windows = WINDOWS) {
 }
 
 // ── Discord 呈現 ─────────────────────────────────────────────
-const line = r => `${r.sector} ↑${r.up} ↓${r.down}（淨 ${r.net >= 0 ? '+' : ''}${r.net}）`;
+// KC 只關注科技、能源類股（2026/10/14）；要增減類股改這裡
+export const FOCUS_SECTORS = ['科技', '能源'];
 
-export function sectorEmbed(stats) {
+const pct = v => (v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`);
+const line = r => `${r.sector} ↑${r.up} ↓${r.down}（淨 ${r.net >= 0 ? '+' : ''}${r.net}）均 ${pct(r.avgChg)}`;
+
+export function sectorEmbed(stats, focus = FOCUS_SECTORS) {
   const fields = stats.map(w => {
-    const buy = w.rows.filter(r => r.net > 0).slice(0, 3);
-    const sell = w.rows.filter(r => r.net < 0).slice(-3).reverse();
-    const value = [
-      ...buy.map(r => `🟢 ${line(r)}`),
-      ...sell.map(r => `🔴 ${line(r)}`),
-    ].join('\n') || '—';
+    const value = focus.map(name => {
+      const r = w.rows.find(x => x.sector === name);
+      if (!r) return `⚪ ${name} 無上榜`;
+      return `${r.net > 0 ? '🟢' : r.net < 0 ? '🔴' : '⚪'} ${line(r)}`;
+    }).join('\n');
     return { name: `近 ${w.window} 日${w.full ? '' : `（累積 ${w.days}/${w.window} 日）`}`, value, inline: true };
   });
   return {
     color: 0x6FA0FF,
-    title: '🧭 美股類股趨勢觀察',
-    description: '依每日漲幅榜／跌幅榜上榜次數統計（↑漲榜 ↓跌榜，淨＝↑−↓）。榜單無法回補歷史，資料從開始記錄日起累積，天數不足的視窗僅供參考。',
+    title: `🧭 美股類股趨勢觀察：${focus.join('、')}`,
+    description: '依每日漲幅榜／跌幅榜上榜次數統計（↑漲榜 ↓跌榜，淨＝↑−↓，均＝該類股所有上榜紀錄的平均漲跌幅）。榜單無法回補歷史，資料從開始記錄日起累積，天數不足的視窗僅供參考。',
     fields,
     footer: { text: '資料來源：Yahoo Finance（榜單、類股）｜非法人買賣超，僅供參考，非投資建議' },
   };

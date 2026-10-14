@@ -52,3 +52,17 @@ test('parseBFI82U sums foreign and dealer in 億元', () => {
 });
 
 test('lots converts shares to 張', () => { assert.equal(lots(1500), 2); assert.equal(lots(-77005602), -77006); });
+
+import { parseTpex, pickWatch } from '../src/twchips.js';
+test('parseTpex reads the fixed 24-column layout', () => {
+  const r = Array(24).fill('0'); r[0] = '7734'; r[1] = '印能科技'; r[10] = '-36,331'; r[13] = '5,000'; r[22] = '2,456'; r[23] = '-28,875';
+  const j = { stat: 'ok', tables: [{ fields: Array(24).fill('x'), data: [r] }] };
+  assert.deepEqual(parseTpex(j), [{ code: '7734', name: '印能科技', foreign: -36331, trust: 5000, dealer: 2456, total: -28875 }]);
+  assert.deepEqual(parseTpex({ stat: 'ok', tables: [{ fields: [], data: [] }] }), []);
+  assert.deepEqual(parseTpex(null), []);
+  assert.throws(() => parseTpex({ stat: 'ok', tables: [{ fields: ['a'], data: [['x']] }] }), /欄位格式改變/);
+});
+test('pickWatch keeps watch order and nulls missing codes', () => {
+  const p = pickWatch([{ code: '2330', total: 1 }], [{ code: '0000', name: '指數' }, { code: '2330', name: '台積電' }]);
+  assert.equal(p[0].row, null); assert.equal(p[1].row.total, 1); assert.equal(p[1].name, '台積電');
+});
