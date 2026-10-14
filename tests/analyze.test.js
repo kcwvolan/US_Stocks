@@ -135,15 +135,17 @@ test('technicals: RSI = 100 when all changes are gains', () => {
 import { riskVeto } from '../src/analyze.js';
 import { parseNews } from '../src/fetch.js';
 
-test('riskVeto caps buy-level ratings only when a hard risk exists', () => {
-  assert.deepEqual(riskVeto(4, { trendBear: true }, null), { vetoed: true, reasons: ['均線空頭排列'], original: '買入', label: '持有' });
-  assert.equal(riskVeto(7, { rsi14: 80 }, null).label, '持有');
-  assert.equal(riskVeto(7, { rsi14: 79.9 }, { daysToEarnings: 4 }).label, '強力買入');
-  assert.equal(riskVeto(3, {}, { daysToEarnings: 3 }).label, '持有');
+test('riskVeto caps buy-level ratings only when a conventional risk exists', () => {
+  assert.deepEqual(riskVeto(4, { price: 90, sma200: 100 }, null), { vetoed: true, reasons: ['股價低於 200 日均線'], original: '買入', label: '持有' });
+  assert.equal(riskVeto(4, { price: 100, sma200: 100 }, null).vetoed, false);
+  assert.equal(riskVeto(7, { rsi14: 70 }, null).label, '持有');
+  assert.equal(riskVeto(7, { rsi14: 69.9 }, { daysToEarnings: 8 }).label, '強力買入');
+  assert.equal(riskVeto(3, {}, { daysToEarnings: 7 }).label, '持有');
   assert.equal(riskVeto(3, {}, { daysToEarnings: -1 }).vetoed, false);
-  assert.equal(riskVeto(2.9, { trendBear: true }, null).vetoed, false);
-  assert.equal(riskVeto(-5, { trendBear: true }, null).label, '強力賣出');
-  assert.equal(riskVeto(5, { trendBear: true, rsi14: 85 }, { daysToEarnings: 1 }).reasons.length, 3);
+  assert.equal(riskVeto(2.9, { price: 1, sma200: 2 }, null).vetoed, false);
+  assert.equal(riskVeto(-5, { price: 1, sma200: 2 }, null).label, '強力賣出');
+  assert.equal(riskVeto(5, { price: 1, sma200: 2, rsi14: 85 }, { daysToEarnings: 1 }).reasons.length, 3);
+  assert.equal(riskVeto(5, null, null).vetoed, false);
 });
 
 test('parseNews keeps only items tagged with the symbol', () => {

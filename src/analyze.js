@@ -218,14 +218,18 @@ export function ratingLabel(score) {
   return '強力賣出';
 }
 
-// Risk veto: a rule-based score can't be a buy while a hard risk condition holds.
+// Risk veto: a rule-based score can't be a buy while a conventional risk condition holds.
+// Thresholds follow common practice: price below the 200-day average (long-term trend filter),
+// earnings within a week (event risk), RSI(14) >= 70 (Wilder's overbought line).
 // The numeric score is unchanged; only the displayed rating is capped at 持有.
+export const RISK = { earningsDays: 7, rsiOverbought: 70 };
+
 export function riskVeto(total, ta, opts) {
   const reasons = [];
-  if (ta?.trendBear) reasons.push('均線空頭排列');
+  if (ta?.price != null && ta?.sma200 != null && ta.price < ta.sma200) reasons.push('股價低於 200 日均線');
   const d = opts?.daysToEarnings;
-  if (d != null && d >= 0 && d <= 3) reasons.push(`財報 ${d} 天內`);
-  if (ta?.rsi14 != null && ta.rsi14 >= 80) reasons.push('RSI ≥ 80 極度超買');
+  if (d != null && d >= 0 && d <= RISK.earningsDays) reasons.push(`財報 ${d} 天內`);
+  if (ta?.rsi14 != null && ta.rsi14 >= RISK.rsiOverbought) reasons.push(`RSI ≥ ${RISK.rsiOverbought} 超買`);
   const original = ratingLabel(total);
   const vetoed = total >= 3 && reasons.length > 0;
   return { vetoed, reasons, original, label: vetoed ? '持有' : original };

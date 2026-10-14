@@ -23,7 +23,7 @@ Multi-symbol support: `stock-eval` and `stock-screen` accept multiple tickers; a
 - `src/fetch.js` — Yahoo Finance API calls (quote, summary, history, options, calendar); session/crumb auth handled internally
 - `src/analyze.js` — pure analysis functions: `fundamentals`, `technicals`, `valuationAnalysis`, `signalBlock`, `incomeHistory`, `convictionParts`
 - `src/ratinglog.js` — daily rating log (`data/rating-log.jsonl`, git-ignored) written by the watchlist push; `node scripts/rating-tracker.js` reports 1/5/20-day forward returns per rating
-- `riskVeto` in `src/analyze.js` — buy-level ratings (score ≥3) are shown as 持有 when trend is fully bearish, earnings ≤3 days, or RSI ≥80; the numeric score is unchanged. News headlines (`getNews`) are display-only, not scored
+- `riskVeto` in `src/analyze.js` — buy-level ratings (score ≥3) are shown as 持有 when price < SMA200, earnings ≤7 days, or RSI ≥70 (conventional thresholds, constants in `RISK`); the numeric score is unchanged. News headlines (`getNews`) are display-only, not scored
 - `src/technicals.js`, `src/options.js` — technical indicators (single shared implementation; RSI uses Wilder smoothing, flat series = 50) / options metrics (IV below 1% treated as missing) used by the Discord pushes and CLI scripts
 - `src/report.js` — CLI rendering via chalk + cli-table3: `printReport`, `printDeep`
 - `src/card.js` — Discord stock card: HTML → PNG via puppeteer-core + local Chrome (see Discord Pushes)
