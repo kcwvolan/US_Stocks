@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { getQuote, getHistoryFull } from '../src/fetch.js';
+import { smaArr, emaArr, rsiArr, bollingerBands, calcATR, calcStoch, calcPivots } from '../src/technicals.js';
 import chalk from 'chalk';
 
 const symbol = process.argv[2]?.toUpperCase();
@@ -8,90 +9,6 @@ const showChart = process.argv.includes('--chart');
 if (!symbol) {
   console.error('Usage: node scripts/technical-analysis.js SYMBOL [--chart]');
   process.exit(1);
-}
-
-// ── Math ──────────────────────────────────────────────────────────────────────
-
-function smaArr(arr, period) {
-  const res = new Array(arr.length).fill(null);
-  let sum = 0;
-  for (let i = 0; i < arr.length; i++) {
-    sum += arr[i];
-    if (i >= period) sum -= arr[i - period];
-    if (i >= period - 1) res[i] = sum / period;
-  }
-  return res;
-}
-
-function emaArr(arr, period) {
-  const k = 2 / (period + 1);
-  const res = new Array(arr.length).fill(null);
-  const start = arr.findIndex(v => v != null);
-  if (start < 0 || arr.length - start < period) return res;
-  let val = arr.slice(start, start + period).reduce((a, b) => a + b, 0) / period;
-  res[start + period - 1] = val;
-  for (let i = start + period; i < arr.length; i++) {
-    if (arr[i] != null) val = arr[i] * k + val * (1 - k);
-    res[i] = val;
-  }
-  return res;
-}
-
-function rsiArr(closes, period = 14) {
-  const res = new Array(closes.length).fill(null);
-  for (let i = period; i < closes.length; i++) {
-    const changes = closes.slice(i - period, i + 1).map((v, j, a) => j ? v - a[j - 1] : 0).slice(1);
-    const gains = changes.filter(c => c > 0).reduce((a, b) => a + b, 0) / period;
-    const losses = changes.filter(c => c < 0).map(Math.abs).reduce((a, b) => a + b, 0) / period;
-    res[i] = losses === 0 ? 100 : 100 - 100 / (1 + gains / losses);
-  }
-  return res;
-}
-
-function bollingerBands(closes, period = 20) {
-  if (closes.length < period) return null;
-  const slice = closes.slice(-period);
-  const mean = slice.reduce((a, b) => a + b, 0) / period;
-  const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
-  const std = Math.sqrt(variance);
-  return { upper: mean + 2 * std, middle: mean, lower: mean - 2 * std };
-}
-
-function calcATR(history, period = 14) {
-  const trs = [];
-  for (let i = 1; i < history.length; i++) {
-    const { high, low } = history[i];
-    const prev = history[i - 1].close;
-    if (high == null || low == null) continue;
-    trs.push(Math.max(high - low, Math.abs(high - prev), Math.abs(low - prev)));
-  }
-  if (trs.length < period) return null;
-  return trs.slice(-period).reduce((a, b) => a + b, 0) / period;
-}
-
-function calcStoch(history, kPeriod = 14, dPeriod = 3) {
-  if (history.length < kPeriod) return null;
-  const ks = [];
-  for (let i = kPeriod - 1; i < history.length; i++) {
-    const s = history.slice(i - kPeriod + 1, i + 1);
-    const high = Math.max(...s.map(d => d.high ?? d.close));
-    const low = Math.min(...s.map(d => d.low ?? d.close));
-    const close = history[i].close;
-    ks.push(high === low ? 50 : ((close - low) / (high - low)) * 100);
-  }
-  const k = ks.at(-1);
-  const d = ks.length >= dPeriod ? ks.slice(-dPeriod).reduce((a, b) => a + b, 0) / dPeriod : null;
-  return { k, d };
-}
-
-function calcPivots(history) {
-  if (history.length < 2) return null;
-  const p = history.at(-2);
-  const hi = p.high ?? p.close;
-  const lo = p.low ?? p.close;
-  const pivot = (hi + lo + p.close) / 3;
-  const hl = hi - lo;
-  return { r2: pivot + hl, r1: 2 * pivot - lo, pivot, s1: 2 * pivot - hi, s2: pivot - hl };
 }
 
 // ── ASCII Chart ───────────────────────────────────────────────────────────────
