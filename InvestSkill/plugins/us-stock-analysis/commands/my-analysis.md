@@ -17,7 +17,7 @@ Parse `$ARGUMENTS` to extract:
 Then run:
 
 ```bash
-node /Users/kcw/Documents/US_Stocks/scripts/stock-eval.js SYMBOL
+node /Users/kcw/Documents/AI_Workplace/US_Stocks/scripts/stock-eval.js SYMBOL
 ```
 
 Use the Bash tool to execute it with the actual symbol from $ARGUMENTS.

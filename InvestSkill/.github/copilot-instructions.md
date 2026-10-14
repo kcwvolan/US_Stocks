@@ -24,7 +24,7 @@ Produces a complete institutional research report including:
 /stock-eval NVDA --deep
 ```
 
-**Backend:** Calls `node /Users/kcw/Documents/US_Stocks/scripts/stock-eval.js {SYMBOL}`
+**Backend:** Calls `node /Users/kcw/Documents/AI_Workplace/US_Stocks/scripts/stock-eval.js {SYMBOL}`
 
 ## Code style
 

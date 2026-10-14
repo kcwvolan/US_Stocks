@@ -55,7 +55,7 @@ plugins/{plugin-name}/.claude-plugin/plugin.json
 
 ## Code conventions
 
-- All analysis scripts live in `/Users/kcw/Documents/US_Stocks/scripts/`
+- All analysis scripts live in `/Users/kcw/Documents/AI_Workplace/US_Stocks/scripts/`
 - Scripts use ES modules (`"type": "module"` in package.json)
 - Yahoo Finance data fetched via native `fetch()` — no library dependency
 - Session crumb cached in module scope for the process lifetime

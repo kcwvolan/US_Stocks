@@ -24,7 +24,7 @@ Institutional-grade US stock analysis as a portable AI skill — works across **
 ### Claude Code
 
 ```bash
-cd /Users/kcw/Documents/US_Stocks
+cd /Users/kcw/Documents/AI_Workplace/US_Stocks
 npm install
 node scripts/setup-verify.js
 

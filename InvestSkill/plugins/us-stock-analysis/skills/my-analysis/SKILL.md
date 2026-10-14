@@ -41,7 +41,7 @@ Given a US stock ticker, produce a complete institutional analysis covering:
 This skill calls the analysis scripts in `US_Stocks/`:
 
 ```bash
-node /Users/kcw/Documents/US_Stocks/scripts/stock-eval.js $SYMBOL
+node /Users/kcw/Documents/AI_Workplace/US_Stocks/scripts/stock-eval.js $SYMBOL
 ```
 
 Then augments the script output with the full institutional narrative using Claude's knowledge of:
