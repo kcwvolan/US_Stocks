@@ -164,6 +164,7 @@ export async function getScreener(scrId, count = 25) {
     marketCap:     q.marketCap,
     preMarketPct:  q.preMarketChangePercent ?? null,
     preMarketPrice:q.preMarketPrice ?? null,
+    time:          q.regularMarketTime ?? null,
   }));
 }
 
@@ -213,4 +214,11 @@ export function parseNews(data, symbol, count = 3) {
 export async function getNews(symbol, count = 3) {
   const data = await yf(`${BASE2}/v1/finance/search?q=${encodeURIComponent(symbol)}&newsCount=${count * 3}&quotesCount=0`);
   return parseNews(data, symbol, count);
+}
+
+// ── Sector / industry (assetProfile; ETFs and some micro caps return none) ────
+export async function getProfile(symbol) {
+  const data = await yf(`${BASE1}/v10/finance/quoteSummary/${symbol}?modules=assetProfile`, true);
+  const p = data.quoteSummary?.result?.[0]?.assetProfile;
+  return { sector: p?.sector ?? null, industry: p?.industry ?? null };
 }

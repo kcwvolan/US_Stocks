@@ -4,7 +4,7 @@
  * 使用專業 Discord Markdown 樣板推送
  */
 import {
-  getScreener, getPreMarket, getMarketNews,
+  getScreener, getPreMarket, getMarketNews, getProfile,
   getQuote, getSummary, getHistory, getHistoryFull,
   getOptionsWithDteFloor, getCalendar, getNews,
 } from '../src/fetch.js';
@@ -15,6 +15,9 @@ import { computeOptions } from '../src/options.js';
 import { getWebhook } from '../src/webhook.js';
 import { changeChartUrl } from '../src/chart.js';
 import { renderStockCard, postImage, closeBrowser } from '../src/card.js';
+import { resolveSectors, toEntries, appendMovers, readLog, sectorStats, sectorEmbed } from '../src/sectors.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 const WEBHOOK           = getWebhook();
 const TOP_N             = 8;
 const DEEP_N            = 5;
@@ -338,5 +341,21 @@ for (const stock of deep) {
   if (!sent) await sendEmbed(buildRadarEmbed(stock));
 }
 await closeBrowser();
+
+// ────────────────────────────────────────────────────────────
+// 類股趨勢觀察：記錄今日榜單（各 25 檔）的類股，統計近 10／30／60／120 個交易日；失敗不影響前面的推播
+// ────────────────────────────────────────────────────────────
+try {
+  const dataDir = join(dirname(fileURLToPath(import.meta.url)), '../data');
+  const [g, l, a] = await Promise.all([
+    getScreener('day_gainers', 25), getScreener('day_losers', 25), getScreener('most_actives', 25),
+  ]);
+  const cache = await resolveSectors([...g, ...l, ...a].map(q => q.symbol), join(dataDir, 'sector-cache.json'), getProfile);
+  const sectorOf = s => cache[s] ?? null;
+  const logFile = join(dataDir, 'mover-log.jsonl');
+  const n = appendMovers(logFile, [...toEntries('gainers', g, sectorOf), ...toEntries('losers', l, sectorOf), ...toEntries('actives', a, sectorOf)]);
+  await sendEmbed(sectorEmbed(sectorStats(readLog(logFile))));
+  process.stdout.write(`🧭 類股趨勢已推送（紀錄累計 ${n} 筆）\n`);
+} catch (e) { process.stderr.write(`類股趨勢失敗: ${e.message}\n`); }
 
 process.stdout.write(`\n✅ 完成 — 已推送 ${deep.length} 支深度分析至 Discord\n`);
