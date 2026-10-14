@@ -6,6 +6,8 @@ import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { fetchChips, topN, lots, pickWatch } from '../src/twchips.js';
+import { deepAnalyze } from '../src/deep.js';
+import { renderStockCard, postImage, closeBrowser } from '../src/card.js';
 import { getWebhook } from '../src/webhook.js';
 
 const WEBHOOK = getWebhook();
@@ -68,7 +70,6 @@ const embeds = [
       `${s.total >= 0 ? '+' : '-'} 合計　${yi(s.total)} 億元`,
     ].join('\n') + '\n```',
   },
-  ...(watchEmbed ? [watchEmbed] : []),
   rankEmbed('三大法人合計', 'total', 0x6FA0FF),
   rankEmbed('外資', 'foreign', 0xC8A96E),
   { ...rankEmbed('投信', 'trust', 0x3DCC8A), footer, timestamp: new Date().toISOString() },
@@ -77,3 +78,40 @@ const embeds = [
 const res = await fetch(WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ embeds }) });
 if (!res.ok) throw new Error(`Discord ${res.status}: ${await res.text()}`);
 console.log(`✅ 已推送臺股三大法人買賣超（${dateText}，個股 ${data.rows.length} 檔（上市 ${data.listedCount}／上櫃 ${data.otcCount}））`);
+
+// ── 自選股圖卡（與美股同款：價量線圖、技術指標、評級、新聞；另含三大法人）──────────
+if (watch.length) {
+  process.stdout.write(`🔍 自選股深度分析 ${watch.length} 檔...\n`);
+  const picked = pickWatch(data.rows, watch);
+  const results = [];
+  for (let i = 0; i < watch.length; i += 4) {
+    const part = watch.slice(i, i + 4);
+    const settled = await Promise.allSettled(part.map(w => deepAnalyze(w.yahoo ?? w.code)));
+    settled.forEach((r, j) => {
+      const w = part[j];
+      if (r.status !== 'fulfilled') { process.stderr.write(`  ⚠️ ${w.code} ${w.name}: ${r.reason?.message ?? r.reason}\n`); return; }
+      const row = picked.find(x => x.code === w.code)?.row;
+      results.push({
+        ...r.value, sym: w.code, zhName: w.name, market: 'TW',
+        chips: row ? { date: dateText, foreign: row.foreign, trust: row.trust, dealer: row.dealer, total: row.total } : null,
+      });
+    });
+    if (i + 4 < watch.length) await new Promise(r => setTimeout(r, 2000));
+  }
+  const failedText = [];
+  for (const stock of results) {
+    let sent = false;
+    const buf = await renderStockCard(stock);
+    if (buf) {
+      try { await postImage(WEBHOOK, buf, `${stock.sym}.png`); sent = true; }
+      catch (e) { process.stderr.write(`圖片上傳失敗(${stock.sym}): ${e.message}\n`); }
+    }
+    if (!sent) failedText.push(stock.sym);
+  }
+  await closeBrowser();
+  // 圖卡失敗的標的退回文字（只剩三大法人數字）
+  if (failedText.length && watchEmbed) {
+    await fetch(WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ embeds: [watchEmbed] }) });
+  }
+  console.log(`✅ 自選股圖卡 ${results.length - failedText.length}/${watch.length} 張`);
+}

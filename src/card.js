@@ -44,6 +44,13 @@ function fmtCap(v) {
 }
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+function stampTextTw(d = new Date()) {
+  const t = new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(d);
+  return `資料時間　臺灣 ${t}`;
+}
+
 function stampText(d = new Date()) {
   const fmt = tz => new Intl.DateTimeFormat('zh-TW', {
     timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
@@ -62,7 +69,8 @@ function fmtVol(v) {
   return String(Math.round(v));
 }
 
-function chartSvg(hist) {
+function chartSvg(hist, { up = '#3DCC8A', dn = '#E8445A', tz = 'America/New_York' } = {}) {
+  const monthOf = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'numeric' });
   const all = (hist ?? []).filter(d => n(d.close) != null);
   if (all.length < 30) return '';
   const sma = k => all.map((_, i) => (i + 1 < k ? null : all.slice(i + 1 - k, i + 1).reduce((a, d) => a + d.close, 0) / k));
@@ -82,7 +90,7 @@ function chartSvg(hist) {
   const pts = arr => arr.map((v, i) => (v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`)).filter(Boolean).join(' ');
 
   const closes = rows.map(d => d.close);
-  const col = closes.at(-1) >= closes[0] ? '#3DCC8A' : '#E8445A';
+  const col = closes.at(-1) >= closes[0] ? up : dn;
   const area = `${x(0).toFixed(1)},${PH} ${pts(closes)} ${x(N - 1).toFixed(1)},${PH}`;
 
   const vmax = Math.max(...rows.map(d => d.volume ?? 0)) || 1;
@@ -91,16 +99,16 @@ function chartSvg(hist) {
   const bars = rows.map((d, i) => {
     const prev = i ? rows[i - 1].close : all[off - 1]?.close ?? d.close;
     const h = ((d.volume ?? 0) / vmax) * VH;
-    return `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${(vTop + VH - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${d.close >= prev ? '#3DCC8A' : '#E8445A'}" opacity="0.75"/>`;
+    return `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${(vTop + VH - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${d.close >= prev ? up : dn}" opacity="0.75"/>`;
   }).join('');
 
   const grid = [hi, (hi + lo) / 2, lo].map(v =>
     `<line x1="0" x2="${pw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#2B3445" stroke-width="1"/>` +
     `<text x="${pw + 6}" y="${(y(v) + 4).toFixed(1)}" font-size="12" fill="#9AA6B8">${f2(v)}</text>`).join('');
 
-  let prevM = nyMonth.format(rows[0].date);
+  let prevM = monthOf.format(rows[0].date);
   const ticks = rows.map((d, i) => {
-    const m = nyMonth.format(d.date);
+    const m = monthOf.format(d.date);
     if (m === prevM) return '';
     prevM = m;
     return `<text x="${x(i).toFixed(1)}" y="${H - 5}" font-size="12" fill="#9AA6B8" text-anchor="middle">${m}月</text>`;
@@ -134,12 +142,13 @@ function newsHtml(news) {
   return `<div class="news">近期新聞標題（僅供參考，未納入評分）${news.map(n => `<div><b>${esc(cut(n.title))}</b>　${esc(n.publisher)} ${d(n.time)}</div>`).join('')}</div>`;
 }
 
-function rating(score) {
-  if (score >= 6)  return ['強力買入', '#3DCC8A'];
-  if (score >= 3)  return ['買入', '#7EC8E3'];
+function rating(score, tw = false) {
+  // 臺股慣例紅漲綠跌：偏多用紅、偏空用綠；美股相反
+  if (score >= 6)  return ['強力買入', tw ? '#E8445A' : '#3DCC8A'];
+  if (score >= 3)  return ['買入', tw ? '#F08A97' : '#7EC8E3'];
   if (score >= 0)  return ['持有', '#C8A96E'];
-  if (score >= -3) return ['賣出', '#F39C12'];
-  return ['強力賣出', '#E8445A'];
+  if (score >= -3) return ['賣出', tw ? '#7EC8E3' : '#F39C12'];
+  return ['強力賣出', tw ? '#3DCC8A' : '#E8445A'];
 }
 
 function bar(pct, color) {
@@ -155,12 +164,22 @@ function entryNote(entry, price) {
   return d > 3 ? `<span class="warn">高於現價 ${f1(d)}%，需先反彈</span>` : '';
 }
 
-export function buildCardHtml({ sym, fund, ta, val, sigs, conviction, opts, hist, news }) {
+function chipsHtml(chips, { up, dn }) {
+  if (!chips) return '';
+  const lots = v => Math.round(v / 1000);
+  const cell = (label, v) => `<div><div class="lab"><span>${label}</span></div><div class="cv" style="color:${lots(v) > 0 ? up : lots(v) < 0 ? dn : '#E6EAF0'}">${lots(v) > 0 ? '+' : ''}${lots(v).toLocaleString('en-US')}</div></div>`;
+  return `<div class="chips"><div class="ctitle">三大法人買賣超（張）　${esc(chips.date ?? '')}</div><div class="chipg">${cell('外資', chips.foreign)}${cell('投信', chips.trust)}${cell('自營商', chips.dealer)}${cell('合計', chips.total)}</div></div>`;
+}
+
+export function buildCardHtml({ sym, fund, ta, val, sigs, conviction, opts, hist, news, market = 'US', zhName, chips }) {
+  const tw = market === 'TW';
+  const UP = tw ? '#E8445A' : '#3DCC8A', DN = tw ? '#3DCC8A' : '#E8445A';
+  const cur = tw ? 'NT$' : '$';
   const price = n(fund?.price);
   const chg = n(fund?.change1d) ?? 0;
   const veto = riskVeto(conviction ?? 0, ta, opts);
-  const [rText, rColor] = rating(veto.vetoed ? 2 : (conviction ?? 0));
-  const chgColor = chg >= 0 ? '#3DCC8A' : '#E8445A';
+  const [rText, rColor] = rating(veto.vetoed ? 2 : (conviction ?? 0), tw);
+  const chgColor = chg > 0 ? UP : chg < 0 ? DN : '#9AA6B8';
   const rsi = n(ta?.rsi14);
   const rsiColor = rsi == null ? '#5B6B7C' : rsi >= 70 ? '#E8445A' : rsi <= 30 ? '#7EC8E3' : '#C8A96E';
   const fromHigh = n(ta?.fromHigh);                 // 例如 -54.46
@@ -196,6 +215,8 @@ body{width:900px;background:#141B27;color:#E6EAF0;font-family:'PingFang TC','Not
 ul{list-style:none;padding:0}li{font-size:17px;line-height:1.55}.dim{color:#5B6B7C}
 .lv{margin-top:24px;background:#1B2434;border-radius:14px;padding:16px 20px;font-size:18px;line-height:1.7}
 .lv b{color:#fff}.warn{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:#3A1B22;color:#FF8A9B;font-size:15px;font-weight:700}
+.chips{margin-top:22px;background:#1B2434;border-radius:14px;padding:14px 20px}
+.chipg{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:6px}.cv{font-size:26px;font-weight:800;margin-top:2px}
 .stamp{margin-top:10px;font-size:17px;font-weight:700;color:#7EC8E3}
 .chart{margin-top:24px;background:#1B2434;border-radius:14px;padding:14px 20px 8px}
 .ctitle{font-size:17px;color:#9AA6B8;margin-bottom:4px}
@@ -205,28 +226,31 @@ ul{list-style:none;padding:0}li{font-size:17px;line-height:1.55}.dim{color:#5B6B
 .src{margin-top:4px;font-size:15px;color:#9AA6B8}
 .foot{margin-top:18px;font-size:14px;color:#5B6B7C}
 </style></head><body><div class="card">
-<div class="head"><div><div class="sym">${esc(sym)}</div><div class="name">${esc(fund?.name ?? '')}</div></div>
+<div class="head"><div><div class="sym">${esc(sym)}</div><div class="name">${esc(zhName ? `${zhName}　${fund?.name ?? ''}` : (fund?.name ?? ''))}</div></div>
 <div style="text-align:right"><span class="badge">${rText}</span><div class="sub">Conviction ${conviction ?? 'N/A'}</div>
-<div class="parts">訊號 ${sn(cp.signals)}　技術 ${sn(cp.tech)}　估值 ${sn(cp.valuation)}　選擇權 ${sn(cp.options)}</div>
+<div class="parts">訊號 ${sn(cp.signals)}　技術 ${sn(cp.tech)}　估值 ${sn(cp.valuation)}${tw ? '' : `　選擇權 ${sn(cp.options)}`}</div>
 ${veto.vetoed ? `<div class="veto">⛔ 風控否決：原為${esc(veto.original)}（${esc(veto.reasons.join('、'))}）</div>` : ''}</div></div>
-<div class="price">$${f2(price)}<span class="chg">${chg >= 0 ? '▲' : '▼'} ${sg(chg)}${f2(chg)}%</span></div>
-<div class="sub">市值 ${esc(fund?.marketCapText ?? fmtCap(fund?.marketCap))}${earn}</div>
-<div class="stamp">${esc(stampText())}</div>
-<div class="src">資料來源　Yahoo Finance（報價、財務、歷史股價、選擇權）；技術指標與訊號為本機依其資料計算</div>
+<div class="price">${cur}${f2(price)}<span class="chg">${chg > 0 ? '▲' : chg < 0 ? '▼' : '─'} ${sg(chg)}${f2(chg)}%</span></div>
+<div class="sub">市值 ${tw ? 'NT$ ' : ''}${esc(fund?.marketCapText ?? fmtCap(fund?.marketCap))}${earn}</div>
+<div class="stamp">${esc(tw ? stampTextTw() : stampText())}</div>
+<div class="src">${tw ? '資料來源　Yahoo Finance（報價、財務、歷史股價）；三大法人為證交所／櫃買中心；技術指標為本機計算' : '資料來源　Yahoo Finance（報價、財務、歷史股價、選擇權）；技術指標與訊號為本機依其資料計算'}</div>
 <div class="grid">
 <div><div class="lab"><span>RSI 14</span><b style="color:${rsiColor}">${f1(rsi)}${rsi != null ? (rsi >= 70 ? '　超買' : rsi <= 30 ? '　超賣' : '') : ''}</b></div>${bar(rsi ?? 0, rsiColor)}</div>
 <div><div class="lab"><span>距 52 週高點</span><b>${fromHigh != null ? f1(fromHigh) + '%' : 'N/A'}</b></div>${bar(fromHigh != null ? 100 + fromHigh : 0, '#6FA0FF')}</div>
-<div><div class="lab"><span>目標價 $${f2(val?.targetPrice)}</span><b style="color:${(upside ?? 0) >= 0 ? '#3DCC8A' : '#E8445A'}">${upside != null ? sg(upside) + f1(upside) + '%' : 'N/A'}</b></div>${bar(upside != null ? Math.abs(upside) / 1.5 : 0, (upside ?? 0) >= 0 ? '#3DCC8A' : '#E8445A')}</div>
-<div><div class="lab"><span>IV</span><b>${opts?.iv1 != null ? (opts.iv1 * 100).toFixed(1) + '%' : 'N/A'}</b></div>${bar(opts?.iv1 != null ? opts.iv1 * 100 : 0, '#C8A96E')}</div>
+<div><div class="lab"><span>目標價 ${cur}${f2(val?.targetPrice)}</span><b style="color:${(upside ?? 0) >= 0 ? UP : DN}">${upside != null ? sg(upside) + f1(upside) + '%' : 'N/A'}</b></div>${bar(upside != null ? Math.abs(upside) / 1.5 : 0, (upside ?? 0) >= 0 ? UP : DN)}</div>
+${tw
+  ? `<div><div class="lab"><span>量比（今日／20 日均量）</span><b>${ta?.volRatio != null ? f1(ta.volRatio) + 'x' : 'N/A'}</b></div>${bar(ta?.volRatio != null ? ta.volRatio / 3 * 100 : 0, '#C8A96E')}</div>`
+  : `<div><div class="lab"><span>IV</span><b>${opts?.iv1 != null ? (opts.iv1 * 100).toFixed(1) + '%' : 'N/A'}</b></div>${bar(opts?.iv1 != null ? opts.iv1 * 100 : 0, '#C8A96E')}</div>`}
 </div>
-${chartSvg(hist)}
-<div class="cols"><div class="box"><h4 style="color:#3DCC8A">利多訊號</h4><ul>${li(bulls, '#BFEBD3')}</ul></div>
-<div class="box"><h4 style="color:#E8445A">利空訊號</h4><ul>${li(bears, '#F5C0C8')}</ul></div></div>
-<div class="lv"><div>進場 <b>${esc(ta?.entry ?? 'N/A')}</b>${entryNote(ta?.entry, price)}</div>
-<div>停損 <b>${esc(ta?.stop ?? 'N/A')}</b></div>
-${p ? `<div>支撐 <b>$${f2(p.s1)}</b> / <b>$${f2(p.s2)}</b>　壓力 <b>$${f2(p.r1)}</b> / <b>$${f2(p.r2)}</b></div>` : ''}</div>
+${chartSvg(hist, { up: UP, dn: DN, tz: tw ? 'Asia/Taipei' : 'America/New_York' })}
+${chipsHtml(chips, { up: UP, dn: DN })}
+<div class="cols"><div class="box"><h4 style="color:${UP}">利多訊號</h4><ul>${li(bulls, tw ? '#F5C0C8' : '#BFEBD3')}</ul></div>
+<div class="box"><h4 style="color:${DN}">利空訊號</h4><ul>${li(bears, tw ? '#BFEBD3' : '#F5C0C8')}</ul></div></div>
+<div class="lv"><div>進場 <b>${esc(String(ta?.entry ?? 'N/A').replace(/\$/g, cur))}</b>${entryNote(ta?.entry, price)}</div>
+<div>停損 <b>${esc(String(ta?.stop ?? 'N/A').replace(/\$/g, cur))}</b></div>
+${p ? `<div>支撐 <b>${cur}${f2(p.s1)}</b> / <b>${cur}${f2(p.s2)}</b>　壓力 <b>${cur}${f2(p.r1)}</b> / <b>${cur}${f2(p.r2)}</b></div>` : ''}</div>
 ${newsHtml(news)}
-<div class="foot">評級為規則計分，非人工判斷：≥6 強力買入／≥3 買入／≥0 持有／≥−3 賣出／其餘強力賣出；買入級以上遇股價低於 200 日均線、財報 7 天內或 RSI≥70 時降為持有。僅供參考，非投資建議</div>
+<div class="foot">評級為規則計分，非人工判斷：≥6 強力買入／≥3 買入／≥0 持有／≥−3 賣出／其餘強力賣出；買入級以上遇股價低於 200 日均線、財報 7 天內或 RSI≥70 時降為持有。僅供參考，非投資建議${tw ? '。顏色採臺股慣例：紅漲綠跌' : ''}</div>
 </div></body></html>`;
 }
 

@@ -26,6 +26,7 @@ Multi-symbol support: `stock-eval` and `stock-screen` accept multiple tickers; a
 - `riskVeto` in `src/analyze.js` — buy-level ratings (score ≥3) are shown as 持有 when price < SMA200, earnings ≤7 days, or RSI ≥70 (conventional thresholds, constants in `RISK`); the numeric score is unchanged. News headlines (`getNews`) are display-only, not scored
 - `src/technicals.js`, `src/options.js` — technical indicators (single shared implementation; RSI uses Wilder smoothing, flat series = 50) / options metrics (IV below 1% treated as missing) used by the Discord pushes and CLI scripts
 - `src/report.js` — CLI rendering via chalk + cli-table3: `printReport`, `printDeep`
+- `src/deep.js` — shared `deepAnalyze(sym)` used by all three pushes
 - `src/card.js` — Discord stock card: HTML → PNG via puppeteer-core + local Chrome (see Discord Pushes)
 - `src/chart.js` — QuickChart change-% bar chart for the radar embed
 - `src/webhook.js` — reads `DISCORD_WEBHOOK_URL` from env or `.env`
@@ -52,8 +53,8 @@ Two scheduled jobs push to one Discord webhook (Taiwan time, daily):
 
 | Time | Script | What it sends |
 |---|---|---|
-| 17:30 | `scripts/discord-tw-chips-push.js` | Taiwan: TWSE institutional net buy/sell (T86, BFI82U) — foreign / trust / dealer totals plus top-10 buy and sell lists (ETFs excluded); skips weekends, retries 3× if TWSE hasn't published yet, silent on holidays; also lists per-stock figures for `tw-watchlist.json` (local, git-ignored; includes listed + OTC via TPEx). Logic in `src/twchips.js` |
-| 18:00 | `scripts/discord-push.js` | Market radar: Yahoo screeners (gainers / losers / most actives), top `DEEP_N` (5) scored names get a deep-analysis card; afterwards logs the top 25 of each list with sector to `data/mover-log.jsonl` (git-ignored; sectors cached in `data/sector-cache.json`) and posts a sector-trend embed (focus sectors 科技／能源, `FOCUS_SECTORS`) for the last 10/30/60/120 trading days (`src/sectors.js`; CLI: `node scripts/sector-trend.js`). Lists can't be back-filled, so long windows fill up over time |
+| 17:30 | `scripts/discord-tw-chips-push.js` | Taiwan: TWSE institutional net buy/sell (T86, BFI82U) — foreign / trust / dealer totals plus top-10 buy and sell lists (ETFs excluded); skips weekends, retries 3× if TWSE hasn't published yet, silent on holidays; then one image card per stock in `tw-watchlist.json` (local, git-ignored; Yahoo symbols `.TW`/`.TWO`) using `renderStockCard` with `market: 'TW'` (NT$, red-up/green-down, institutional panel); market-wide ranking includes listed + OTC (TPEx). Logic in `src/twchips.js` |
+| 18:00 | `scripts/discord-push.js` | Market radar: Yahoo screeners (gainers / losers / most actives), top `DEEP_N` (5) scored names get a deep-analysis card; afterwards logs the top 25 of each list with sector to `data/mover-log.jsonl` (git-ignored; sectors cached in `data/sector-cache.json`) and posts a sector-trend embed (top-3 net-up and net-down sectors) for the last 10/30/60/120 trading days (`src/sectors.js`; CLI: `node scripts/sector-trend.js`). Lists can't be back-filled, so long windows fill up over time |
 | 18:10 | `scripts/discord-watchlist-push.js` | Every ticker in `watchlist.json` (batched), one card each; optional `cardTickers` array limits which get image cards |
 
 - Running either script by hand **really posts to Discord**. To test a card without posting, call `renderStockCard()` from `src/card.js` and write the PNG to disk.

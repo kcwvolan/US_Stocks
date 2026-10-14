@@ -17,6 +17,7 @@ import { makeEntry, appendRatings } from '../src/ratinglog.js';
 const __dir     = dirname(fileURLToPath(import.meta.url));
 const WATCHLIST = JSON.parse(readFileSync(join(__dir, '../watchlist.json'), 'utf8')).tickers;
 import { getWebhook } from '../src/webhook.js';
+import { deepAnalyze } from '../src/deep.js';
 import { changeChartUrl } from '../src/chart.js';
 import { renderStockCard, postImage, closeBrowser } from '../src/card.js';
 const WEBHOOK   = getWebhook();
@@ -115,30 +116,8 @@ function rsiLabel(v) {
   return `${f1(n)} 中性`;
 }
 
-function scoreConviction(sigs, ta, val, opts) {
-  return convictionParts(sigs, ta, val, opts).total;
-}
 
 // ── 深度分析 ──────────────────────────────────────────────────
-async function deepAnalyze(sym) {
-  const [quote, summary, history, histFull, optData, calendar, news] = await Promise.all([
-    getQuote(sym),
-    getSummary(sym),
-    getHistory(sym),
-    getHistoryFull(sym),
-    getOptionsWithDteFloor(sym, 7).catch(() => null),
-    getCalendar(sym).catch(() => null),
-    getNews(sym, 3).catch(() => []),
-  ]);
-  const fund = fundamentals(summary, quote);
-  const tech = technicals(history);
-  const ta   = computeTechnicals(quote, histFull);
-  const val  = valuationAnalysis(fund);
-  const sigs = signalBlock(fund, tech);
-  const opts = optData ? computeOptions(quote, optData, calendar) : null;
-  const conviction = scoreConviction(sigs, ta, val, opts);
-  return { sym, fund, tech, ta, val, sigs, opts, conviction, hist: histFull, news };
-}
 
 async function batchDeep(syms) {
   const results = [];

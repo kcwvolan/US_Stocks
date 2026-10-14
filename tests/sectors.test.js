@@ -57,13 +57,12 @@ test('sectorStats windows count distinct dates, net and averages', () => {
 });
 
 import { sectorEmbed } from '../src/sectors.js';
-test('sectorEmbed focuses on 科技/能源 and marks incomplete windows', () => {
-  const rows = [['科技', 5, 1, 2.34], ['金融', 9, 0, 1], ['工業', 0, 4, -1]].map(([sector, up, down, avgChg]) => ({ sector, up, down, active: 0, net: up - down, avgChg }));
+test('sectorEmbed shows top net buys/sells and marks incomplete windows', () => {
+  const rows = [['科技', 5, 0], ['能源', 3, 1], ['金融', 2, 2], ['工業', 0, 2], ['公用事業', 0, 4]].map(([sector, up, down]) => ({ sector, up, down, active: 0, net: up - down, avgChg: null }));
   const e = sectorEmbed([{ window: 10, days: 3, full: false, rows }, { window: 30, days: 0, full: false, rows: [] }]);
   assert.equal(e.fields[0].name, '近 10 日（累積 3/10 日）');
-  assert.match(e.fields[0].value, /🟢 科技 ↑5 ↓1（淨 \+4）均 \+2\.3%/);
-  assert.match(e.fields[0].value, /⚪ 能源 無上榜/);
-  assert.ok(!e.fields[0].value.includes('金融') && !e.fields[0].value.includes('工業'));
-  assert.match(e.title, /科技、能源/);
-  assert.match(sectorEmbed([{ window: 10, days: 1, full: false, rows }], ['工業']).fields[0].value, /🔴 工業/);
+  assert.match(e.fields[0].value, /🟢 科技 ↑5 ↓0（淨 \+5）/);
+  assert.match(e.fields[0].value, /🔴 公用事業 ↑0 ↓4（淨 -4）/);
+  assert.ok(!e.fields[0].value.includes('金融'));
+  assert.equal(e.fields[1].value, '—');
 });
