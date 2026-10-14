@@ -55,10 +55,11 @@ function maxPain(chain) {
   return best;
 }
 
-// IV=0 is indistinguishable from missing data; treat as null per CLAUDE.md rule.
-const ivOrNull = v => (v == null || v === 0) ? null : v;
+// Yahoo fills placeholder IVs (1e-5 up to under 1%) on contracts with no bid/ask; no real equity option trades below 1% IV.
+const MIN_VALID_IV = 0.01;
+export const ivOrNull = v => (!Number.isFinite(v) || v < MIN_VALID_IV ? null : v);
 
-function atmIV(chain, atmStrike) {
+export function atmIV(chain, atmStrike) {
   return ivOrNull(chain.calls.find(o => o.strike === atmStrike)?.impliedVolatility)
     ?? ivOrNull(chain.puts.find(o => o.strike === atmStrike)?.impliedVolatility)
     ?? null;

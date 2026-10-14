@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { getQuote, getOptionsWithDteFloor, getCalendar } from '../src/fetch.js';
-import { optPriceDetail } from '../src/options.js';
+import { optPriceDetail, atmIV } from '../src/options.js';
 import chalk from 'chalk';
 
 const symbol = process.argv[2]?.toUpperCase();
@@ -18,7 +18,6 @@ if (!symbol) {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const fmt2 = n => n != null ? n.toFixed(2) : 'N/A';
-const ivOrNull = v => (v == null || v === 0) ? null : v;
 const h1 = s => chalk.bold.cyan(s);
 
 function fmtDate(unix) {
@@ -65,12 +64,6 @@ function maxPain(chain) {
     if (pain < minPain) { minPain = pain; best = sp; }
   }
   return best;
-}
-
-function atmIV(chain, atmStrike) {
-  return ivOrNull(chain.calls.find(o => o.strike === atmStrike)?.impliedVolatility)
-    ?? ivOrNull(chain.puts.find(o => o.strike === atmStrike)?.impliedVolatility)
-    ?? null;
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────

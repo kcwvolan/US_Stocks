@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { optPriceDetail, optPrice, computeOptions } from '../src/options.js';
+import { optPriceDetail, optPrice, computeOptions, ivOrNull, atmIV } from '../src/options.js';
 
 // ── optPriceDetail fallback chain ─────────────────────────────────────────────
 
@@ -336,4 +336,41 @@ test('computeOptions: chainRow IV is null when contract is missing impliedVolati
     assert.equal(row.callIV, null, `callIV should be null when field absent`);
     assert.equal(row.putIV,  null, `putIV should be null when field absent`);
   }
+});
+
+// ── Yahoo placeholder IV (contracts with no bid/ask) ──────────────────────────
+
+test('ivOrNull: null for 0, 1e-5 and sub-1% placeholders, NaN and missing', () => {
+  for (const v of [0, 0.00001, 0.00196, 0.0078, NaN, null, undefined]) {
+    assert.equal(ivOrNull(v), null, `ivOrNull(${v}) must be null`);
+  }
+});
+
+test('ivOrNull: keeps real IVs (1% and above)', () => {
+  assert.equal(ivOrNull(0.01), 0.01);
+  assert.equal(ivOrNull(0.35), 0.35);
+  assert.equal(ivOrNull(1.8), 1.8);
+});
+
+test('atmIV: falls back to the put when the call IV is a placeholder', () => {
+  const chain = {
+    calls: [{ strike: 100, impliedVolatility: 0.00001 }],
+    puts:  [{ strike: 100, impliedVolatility: 0.42 }],
+  };
+  assert.equal(atmIV(chain, 100), 0.42);
+});
+
+test('atmIV: null when both sides are placeholders', () => {
+  const chain = {
+    calls: [{ strike: 100, impliedVolatility: 0.00001 }],
+    puts:  [{ strike: 100, impliedVolatility: 0.0078 }],
+  };
+  assert.equal(atmIV(chain, 100), null);
+});
+
+test('computeOptions: iv1 is null when every contract carries the 1e-5 placeholder', () => {
+  const optData = makeOptDataZeroIV(STRIKES, PRICE);
+  for (const o of [...optData.options[0].calls, ...optData.options[0].puts]) o.impliedVolatility = 0.00001;
+  const result = computeOptions(QUOTE, optData, CALENDAR);
+  assert.equal(result.iv1, null);
 });
