@@ -6,14 +6,23 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "verify": "node scripts/setup-verify.js",
+    "analyze": "node scripts/analyze.js",
     "eval": "node scripts/stock-eval.js",
     "screen": "node scripts/stock-screen.js",
+    "ta": "node scripts/technical-analysis.js",
+    "options": "node scripts/options-analysis.js",
     "lint:json": "for f in InvestSkill/plugins/us-stock-analysis/.claude-plugin/plugin.json InvestSkill/.claude-plugin/marketplace.json; do jq empty \"$f\" && echo \"✅ $f\"; done && node -e \"const a=JSON.parse(require('fs').readFileSync('InvestSkill/plugins/us-stock-analysis/.claude-plugin/plugin.json')).version,b=JSON.parse(require('fs').readFileSync('InvestSkill/.claude-plugin/marketplace.json')).metadata.version;if(a!==b){console.error('❌ Version mismatch: plugin='+a+' marketplace='+b);process.exit(1)}console.log('✅ Versions match: '+a)\"",
+    "scan": "node scripts/daily-scanner.js",
+    "monitor": "node scripts/portfolio-monitor.js",
+    "export": "node scripts/export-report.js",
     "pre-release": "npm test && node scripts/setup-verify.js && npm run lint:json && echo '\\n✅ Pre-release checks passed'"
   },
   "dependencies": {
-    "yahoo-finance2": "^2.11.3",
+    "@anthropic-ai/sdk": "^0.95.1",
     "chalk": "^5.3.0",
-    "cli-table3": "^0.6.5"
+    "cli-table3": "^0.6.5",
+    "marked": "^18.0.3",
+    "puppeteer-core": "^24.43.0",
+    "yahoo-finance2": "^2.11.3"
   }
 }

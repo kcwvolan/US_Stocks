@@ -16,6 +16,8 @@ import { computeOptions } from '../src/options.js';
 const __dir     = dirname(fileURLToPath(import.meta.url));
 const WATCHLIST = JSON.parse(readFileSync(join(__dir, '../watchlist.json'), 'utf8')).tickers;
 import { getWebhook } from '../src/webhook.js';
+import { changeChartUrl } from '../src/chart.js';
+import { renderStockCard, postImage, closeBrowser } from '../src/card.js';
 const WEBHOOK   = getWebhook();
 const BATCH     = 4;
 
@@ -294,8 +296,14 @@ const tableRows   = quotes.map(({ sym, ok, q }) => {
   return `${sym.padEnd(7)} ${f2(q.regularMarketPrice).padStart(8)}  ${(sgn(chg)+f2(chg)+'%').padStart(7)}  ${(volR ? f1(volR)+'x' : 'N/A').padStart(9)}`;
 });
 
+const chartUrl = await changeChartUrl(
+  sorted.map(({ sym, q }) => ({ sym, chg: q.regularMarketChangePercent })),
+  'Watchlist 今日漲跌幅 (%)',
+);
+
 await sendEmbed({
   color: 0x2B2D31,
+  ...(chartUrl ? { image: { url: chartUrl } } : {}),
   title: '📋  KCW Watchlist Dashboard',
   description: `**${nowStr}**\n監控 **${WATCHLIST.length}** 支標的　｜　深度分析報告如下`,
   fields: [
@@ -317,9 +325,28 @@ const deepAll = await batchDeep(WATCHLIST);
 deepAll.sort((a, b) => b.conviction - a.conviction);
 
 // Discord 允許一次最多 10 個 embed；每支一個，兩兩一批避免超限
-for (let i = 0; i < deepAll.length; i += 2) {
-  const batch = deepAll.slice(i, i + 2).map(buildStockEmbed);
-  await sendEmbeds(batch);
+// 單日波動最大的 3 檔以圖片卡片呈現，其餘維持文字 embed；圖片失敗自動退回文字
+// 預設全部出圖卡；若 watchlist.json 設了 cardTickers 陣列，則只有清單內的標的出圖卡，其餘用文字卡片
+const pinned = JSON.parse(readFileSync(join(__dir, '../watchlist.json'), 'utf8')).cardTickers;
+const highlightSyms = new Set(
+  Array.isArray(pinned) && pinned.length
+    ? pinned.map(t => String(t).toUpperCase())
+    : deepAll.map(d => d.sym));
+const textStocks = [];
+for (const stock of deepAll) {
+  let sent = false;
+  if (highlightSyms.has(stock.sym)) {
+    const buf = await renderStockCard(stock);
+    if (buf) {
+      try { await postImage(WEBHOOK, buf, `${stock.sym}.png`); sent = true; }
+      catch (e) { process.stderr.write(`圖片上傳失敗(${stock.sym}): ${e.message}\n`); }
+    }
+  }
+  if (!sent) textStocks.push(stock);
+}
+await closeBrowser();
+for (let i = 0; i < textStocks.length; i += 2) {
+  await sendEmbeds(textStocks.slice(i, i + 2).map(buildStockEmbed));
 }
 
 process.stdout.write(`\n✅ 完成 — 已推送 ${deepAll.length} 支 Watchlist Dashboard 至 Discord\n`);

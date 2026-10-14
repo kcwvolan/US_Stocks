@@ -42,7 +42,7 @@ if (allOk) {
   console.log('\nQuick start:');
   console.log('  node scripts/stock-eval.js AAPL       # analyze one stock');
   console.log('  node scripts/stock-screen.js           # screen default watchlist');
-  console.log('  node scripts/stock-screen.js AAPL MSFT NVDA   # custom list');
+  console.log('  node scripts/stock-screen.js AAPL NVDA NOK  # custom list');
 } else {
   console.log('\x1b[31mSome checks failed — fix the issues above before running.\x1b[0m');
   process.exit(1);

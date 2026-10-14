@@ -13,6 +13,8 @@ import { computeTechnicals } from '../src/technicals.js';
 import { computeOptions } from '../src/options.js';
 
 import { getWebhook } from '../src/webhook.js';
+import { changeChartUrl } from '../src/chart.js';
+import { renderStockCard, postImage, closeBrowser } from '../src/card.js';
 const WEBHOOK           = getWebhook();
 const TOP_N             = 8;
 const DEEP_N            = 5;
@@ -299,10 +301,16 @@ const newsText = news.length
   ? news.map(n => `**[${n.pubDate}]** ${n.title} *— ${n.publisher}*`).join('\n')
   : '暫無新聞資料';
 
+const chartUrl = await changeChartUrl(
+  [...gainers.slice(0, 5), ...losers.slice(0, 5)].map(q => ({ sym: q.symbol, chg: q.changePct })),
+  '今日漲跌幅 Top 5 / Bottom 5 (%)',
+);
+
 await sendEmbed({
   title: '📊 KCW 美股每日市場情報深度報告',
   description: `**${nowStr}**\n篩選範圍：漲幅榜 · 跌幅榜 · 成交量榜　｜　深度分析 **${deep.length}** 支高動能標的\n\n**📰 盤前快訊**\n${newsText}`,
   color: 0xC8A96E,
+  ...(chartUrl ? { image: { url: chartUrl } } : {}),
   fields: [
     {
       name: '⚡ 成交量異常排行',
@@ -323,8 +331,19 @@ await sendEmbed({
 // ────────────────────────────────────────────────────────────
 // 深度個股報告（市場雷達 Embed 格式）
 // ────────────────────────────────────────────────────────────
+// 全部以圖片卡片呈現；圖片失敗自動退回文字 embed
+const highlightSyms = new Set(deep.map(d => d.sym));
 for (const stock of deep) {
-  await sendEmbed(buildRadarEmbed(stock));
+  let sent = false;
+  if (highlightSyms.has(stock.sym)) {
+    const buf = await renderStockCard(stock);
+    if (buf) {
+      try { await postImage(WEBHOOK, buf, `${stock.sym}.png`); sent = true; }
+      catch (e) { process.stderr.write(`圖片上傳失敗(${stock.sym}): ${e.message}\n`); }
+    }
+  }
+  if (!sent) await sendEmbed(buildRadarEmbed(stock));
 }
+await closeBrowser();
 
 process.stdout.write(`\n✅ 完成 — 已推送 ${deep.length} 支深度分析至 Discord\n`);

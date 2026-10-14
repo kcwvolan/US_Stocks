@@ -83,3 +83,115 @@ export async function getHistory(symbol) {
     .map((t, i) => ({ date: new Date(t * 1000), close: closes[i] }))
     .filter(d => d.close != null);
 }
+
+export async function getHistoryFull(symbol) {
+  const end = Math.floor(Date.now() / 1000);
+  const start = end - 365 * 24 * 3600;
+  const data = await yf(
+    `${BASE1}/v8/finance/chart/${symbol}?interval=1d&period1=${start}&period2=${end}`
+  );
+  const r = data.chart.result[0];
+  const timestamps = r.timestamp ?? [];
+  const q = r.indicators.quote[0];
+  return timestamps
+    .map((t, i) => ({
+      date: new Date(t * 1000),
+      open: q.open?.[i],
+      high: q.high?.[i],
+      low: q.low?.[i],
+      close: q.close?.[i],
+      volume: q.volume?.[i],
+    }))
+    .filter(d => d.close != null);
+}
+
+export async function getOptions(symbol, date = null) {
+  const url = date
+    ? `${BASE1}/v7/finance/options/${symbol}?date=${date}`
+    : `${BASE1}/v7/finance/options/${symbol}`;
+  const data = await yf(url, true);
+  const result = data.optionChain?.result?.[0];
+  if (!result) throw new Error(`No options data for ${symbol}`);
+  return result;
+}
+
+// Pure helper: given an expirationDates array, return the first timestamp whose
+// DTE >= dteFloor, or null if none qualify. Exported for unit testing.
+export function pickNextExpiry(expirationDates, dteFloor) {
+  if (!expirationDates?.length) return null;
+  return expirationDates.find(
+    ts => Math.round((ts * 1000 - Date.now()) / 86400000) >= dteFloor
+  ) ?? null;
+}
+
+// Fetches options, re-fetching with the next valid expiry if the default chain
+// has DTE < dteFloor (near-expiry contracts collapse to $0 bids).
+export async function getOptionsWithDteFloor(symbol, dteFloor = 7) {
+  const data = await getOptions(symbol);
+  if (!data?.options?.length) return data;
+  const firstDte = Math.round((data.options[0].expirationDate * 1000 - Date.now()) / 86400000);
+  if (firstDte >= dteFloor) return data;
+  const nextDate = pickNextExpiry(data.expirationDates, dteFloor);
+  return nextDate ? getOptions(symbol, nextDate) : data;
+}
+
+export async function getCalendar(symbol) {
+  const data = await yf(
+    `${BASE1}/v10/finance/quoteSummary/${symbol}?modules=calendarEvents`,
+    true
+  );
+  const result = data.quoteSummary?.result?.[0];
+  if (!result) throw new Error(`No calendar data for ${symbol}`);
+  return result;
+}
+
+// ── Market Screener ───────────────────────────────────────────────────────────
+// scrId: 'day_gainers' | 'day_losers' | 'most_actives' | 'small_cap_gainers'
+export async function getScreener(scrId, count = 25) {
+  const data = await yf(
+    `${BASE1}/v1/finance/screener/predefined/saved?scrIds=${scrId}&count=${count}&region=US&lang=en-US`,
+    true
+  );
+  const quotes = data?.finance?.result?.[0]?.quotes ?? [];
+  return quotes.map(q => ({
+    symbol:        q.symbol,
+    name:          q.shortName ?? q.longName ?? q.symbol,
+    price:         q.regularMarketPrice,
+    change:        q.regularMarketChange,
+    changePct:     q.regularMarketChangePercent,
+    volume:        q.regularMarketVolume,
+    avgVolume:     q.averageDailyVolume3Month ?? q.averageDailyVolume10Day,
+    marketCap:     q.marketCap,
+    preMarketPct:  q.preMarketChangePercent ?? null,
+    preMarketPrice:q.preMarketPrice ?? null,
+  }));
+}
+
+// ── Pre-market quote ──────────────────────────────────────────────────────────
+export async function getPreMarket(symbol) {
+  const data = await yf(
+    `${BASE1}/v8/finance/chart/${symbol}?interval=1m&range=1d&prePost=true`
+  );
+  const meta = data.chart.result?.[0]?.meta;
+  return {
+    symbol,
+    preMarketPrice:   meta?.preMarketPrice ?? null,
+    preMarketChange:  meta?.preMarketChange ?? null,
+    preMarketChangePct: meta?.preMarketChangePercent ?? null,
+    regularMarketPrice: meta?.regularMarketPrice ?? null,
+  };
+}
+
+// ── Market News ───────────────────────────────────────────────────────────────
+export async function getMarketNews(count = 8) {
+  const data = await yf(
+    `${BASE2}/v2/finance/news?symbols=%5EGSPC,%5EIXIC,%5EDJI&count=${count}&region=US`
+  );
+  const items = data?.items?.result ?? [];
+  return items.slice(0, count).map(n => ({
+    title:     n.title ?? '',
+    publisher: n.publisher ?? '',
+    link:      n.link ?? '',
+    pubDate:   n.pubTime ? new Date(n.pubTime * 1000).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' }) : '',
+  }));
+}
