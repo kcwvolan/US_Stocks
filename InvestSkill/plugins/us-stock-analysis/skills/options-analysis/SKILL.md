@@ -42,7 +42,7 @@ Given a US ticker, fetches the live options chain from Yahoo Finance and provide
 ## Implementation
 
 ```bash
-node /Users/kcw/Documents/AI_Workplace/US_Stocks/scripts/options-analysis.js $SYMBOL [--earnings]
+node /Users/kcw/Developer/US_Stocks/scripts/options-analysis.js $SYMBOL [--earnings]
 ```
 
 ## Strategy selection logic

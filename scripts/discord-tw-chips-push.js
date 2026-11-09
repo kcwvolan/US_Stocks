@@ -7,6 +7,11 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { fetchChips, topN, lots, pickWatch } from '../src/twchips.js';
 import { deepAnalyze } from '../src/deep.js';
+import { markSuccess } from '../src/heartbeat.js';
+import { fileURLToPath as _f2u } from 'url';
+import { dirname as _dn, join as _jn } from 'path';
+const MARK_FILE = _jn(_dn(_f2u(import.meta.url)), '../data/last-success.json');
+
 import { renderStockCard, postImage, closeBrowser } from '../src/card.js';
 import { getWebhook } from '../src/webhook.js';
 
@@ -14,7 +19,7 @@ const WEBHOOK = getWebhook();
 const tz = { timeZone: 'Asia/Taipei' };
 const parts = new Intl.DateTimeFormat('en-CA', { ...tz, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' })
   .formatToParts(new Date()).reduce((o, p) => (o[p.type] = p.value, o), {});
-if (['Sat', 'Sun'].includes(parts.weekday)) { console.log('週末休市，不推播'); process.exit(0); }
+if (['Sat', 'Sun'].includes(parts.weekday)) { console.log('週末休市，不推播'); markSuccess(MARK_FILE, 'tw-chips', 'skipped'); process.exit(0); }
 const ymd = `${parts.year}${parts.month}${parts.day}`;
 const dateText = `${parts.year}/${parts.month}/${parts.day}`;
 
@@ -24,7 +29,7 @@ for (let i = 0; i < 4; i++) {
   catch (e) { process.stderr.write(`抓取失敗: ${e.message}\n`); }
   if (i < 3) { console.log(`尚無 ${ymd} 資料，5 分鐘後重試（${i + 1}/3）`); await new Promise(r => setTimeout(r, 5 * 60 * 1000)); }
 }
-if (!data) { console.log(`無 ${ymd} 資料（休市或證交所尚未公布），不推播`); process.exit(0); }
+if (!data) { console.log(`無 ${ymd} 資料（休市或證交所尚未公布），不推播`); markSuccess(MARK_FILE, 'tw-chips', 'skipped'); process.exit(0); }
 
 const sg = v => (v >= 0 ? '+' : '');
 const yi = v => `${sg(v)}${v.toFixed(1)}`;
@@ -115,3 +120,4 @@ if (watch.length) {
   }
   console.log(`✅ 自選股圖卡 ${results.length - failedText.length}/${watch.length} 張`);
 }
+markSuccess(MARK_FILE, 'tw-chips');

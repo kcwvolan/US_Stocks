@@ -7,7 +7,7 @@ allowed-tools: Bash
 Run the technical analysis script for the given symbol:
 
 ```bash
-node /Users/kcw/Documents/AI_Workplace/US_Stocks/scripts/technical-analysis.js $ARGUMENTS
+node /Users/kcw/Developer/US_Stocks/scripts/technical-analysis.js $ARGUMENTS
 ```
 
 After the script output, provide a brief institutional interpretation covering:

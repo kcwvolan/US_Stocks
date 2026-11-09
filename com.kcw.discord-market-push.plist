@@ -7,7 +7,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/kcw/Documents/AI_Workplace/US_Stocks/run-market-push.sh</string>
+        <string>/Users/kcw/Developer/US_Stocks/run-market-push.sh</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>

@@ -38,7 +38,7 @@ Given a US ticker, runs a full technical analysis covering:
 ## Implementation
 
 ```bash
-node /Users/kcw/Documents/AI_Workplace/US_Stocks/scripts/technical-analysis.js $SYMBOL [--chart]
+node /Users/kcw/Developer/US_Stocks/scripts/technical-analysis.js $SYMBOL [--chart]
 ```
 
 ## Output sections

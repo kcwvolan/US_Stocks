@@ -14,6 +14,7 @@ import { computeOptions } from '../src/options.js';
 
 import { getWebhook } from '../src/webhook.js';
 import { deepAnalyze } from '../src/deep.js';
+import { markSuccess } from '../src/heartbeat.js';
 import { changeChartUrl } from '../src/chart.js';
 import { renderStockCard, postImage, closeBrowser } from '../src/card.js';
 import { resolveSectors, toEntries, appendMovers, readLog, sectorStats, sectorEmbed } from '../src/sectors.js';
@@ -338,3 +339,4 @@ try {
 } catch (e) { process.stderr.write(`類股趨勢失敗: ${e.message}\n`); }
 
 process.stdout.write(`\n✅ 完成 — 已推送 ${deep.length} 支深度分析至 Discord\n`);
+markSuccess(join(dirname(fileURLToPath(import.meta.url)), '../data/last-success.json'), 'market-radar');

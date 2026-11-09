@@ -7,7 +7,7 @@ allowed-tools: Bash
 Run the options analysis script for the given symbol:
 
 ```bash
-node /Users/kcw/Documents/AI_Workplace/US_Stocks/scripts/options-analysis.js $ARGUMENTS
+node /Users/kcw/Developer/US_Stocks/scripts/options-analysis.js $ARGUMENTS
 ```
 
 After the script output, provide a brief institutional interpretation covering:

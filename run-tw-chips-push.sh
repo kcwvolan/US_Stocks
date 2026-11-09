@@ -5,5 +5,5 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 
 NODE=$(which node 2>/dev/null || echo "/usr/local/bin/node")
-cd /Users/kcw/Documents/AI_Workplace/US_Stocks
-exec "$NODE" scripts/discord-tw-chips-push.js >> /Users/kcw/Documents/AI_Workplace/US_Stocks/discord-tw-chips-push.log 2>&1
+cd /Users/kcw/Developer/US_Stocks
+exec "$NODE" scripts/discord-tw-chips-push.js >> /Users/kcw/Developer/US_Stocks/discord-tw-chips-push.log 2>&1

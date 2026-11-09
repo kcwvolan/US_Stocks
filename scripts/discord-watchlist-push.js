@@ -18,6 +18,7 @@ const __dir     = dirname(fileURLToPath(import.meta.url));
 const WATCHLIST = JSON.parse(readFileSync(join(__dir, '../watchlist.json'), 'utf8')).tickers;
 import { getWebhook } from '../src/webhook.js';
 import { deepAnalyze } from '../src/deep.js';
+import { markSuccess } from '../src/heartbeat.js';
 import { changeChartUrl } from '../src/chart.js';
 import { renderStockCard, postImage, closeBrowser } from '../src/card.js';
 const WEBHOOK   = getWebhook();
@@ -328,3 +329,4 @@ for (let i = 0; i < textStocks.length; i += 2) {
 }
 
 process.stdout.write(`\n✅ 完成 — 已推送 ${deepAll.length} 支 Watchlist Dashboard 至 Discord\n`);
+markSuccess(join(__dir, '../data/last-success.json'), 'watchlist');
